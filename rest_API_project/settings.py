@@ -82,9 +82,9 @@ WSGI_APPLICATION = 'rest_API_project.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'NoteApp',
+        'NAME': 'api_app',
         'USER': 'root',
-        'PASSWORD': 'mysqlserver',
+        'PASSWORD': '123456789',
         'PORT': 3306,
         'HOST': '127.0.0.1',
     }
