@@ -3,8 +3,7 @@ import { useState,useEffect } from 'react'
 import { useParams,useNavigate } from 'react-router-dom'
 import { Link  } from 'react-router-dom';
 import { ReactComponent as ArrowLeft } from '../assets/arrow-left.svg'
-import NoteList from './List_note';
- 
+
 
 const Detail_notes = () => {
     let {id} = useParams(); 
@@ -14,14 +13,14 @@ const Detail_notes = () => {
     useEffect(()=>{detail_note()},[id])
 
     let detail_note = async() => {
-        let response = await fetch(`/call_api/Action/${id}/`)
+        let response = await fetch(`http://127.0.0.1:2806/call_api/Action/${id}/`)
         let data = await response.json()
         SetItem(data)
         console.log('data:',data)
     }
 
     let updateNote = async () => {
-        fetch(`/call_api/Action/${id}/`, {
+        fetch(`http://127.0.0.1:2806/call_api/Action/${id}/`, {
             method: "PUT",
             headers: {
                 'Content-Type': 'application/json'
@@ -30,26 +29,22 @@ const Detail_notes = () => {
         })
     }
 
-    let detele_note = async =>{
-        fetch(`/call_api/Action/${id}/`,{
+    let detele_note = async () =>{
+        fetch(`http://127.0.0.1:2806/call_api/Action/${id}/`,{
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(item)  
         })
+        navigate('/all_note/')
     }
 
     let handleSubmit = () => {
         updateNote()
         navigate('/all_note/')
     }
-    let compound = () => {
-        detele_note()
-        // navigate('/all_note/')
-        NoteList()
-    }
-    
+
     let handleChange = (value) => {
         SetItem(item => ({ ...item, 'note_conntent': value }))
         console.log('Handle Change:', item)
@@ -64,8 +59,8 @@ const Detail_notes = () => {
             <div className='note-header'>
                 <ArrowLeft onClick ={handleSubmit}/>
             </div>
-            <Link onClick={compound}>Delete</Link>
-            <textarea onChange={(e) => { handleChange(e.target.value) }} value={item?.note_conntent}></textarea>
+            <button onClick={detele_note}>DELETE</button>
+            <textarea onChange={(e) => {handleChange(e.target.value)}} value={item?.note_conntent}></textarea>
             <div className='date'>
                 <p>Created :{item?.created}</p>
                 <p>Last updated :<span>{getTime(item)}</span></p>
