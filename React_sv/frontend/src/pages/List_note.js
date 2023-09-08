@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ListItem from '../components/list_item';
 import Add_note from '../components/add_note'
-
+import Detail_notes from './Detail_notes';
 
 const NoteList = () => {
     
@@ -84,6 +84,9 @@ const NoteList = () => {
             <button onClick={onoffadnote}>
                 <Add_note/>
             </button>
+            <div>
+              <Detail_notes getNotes={getNotes} />
+            </div>
         </div>
     )
 }

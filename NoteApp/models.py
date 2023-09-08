@@ -3,7 +3,6 @@ from django.contrib.auth.models import User
 
 
 class Note(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE,null=True)
     note_title = models.TextField(null=True,blank=True)
     note_conntent = models.TextField(null=True,blank=True)
     created = models.DateField(auto_now_add=True)

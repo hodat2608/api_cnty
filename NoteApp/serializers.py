@@ -8,13 +8,3 @@ class NoteSerializer(ModelSerializer):
     class Meta:
         model = Note 
         fields = '__all__'
-
-class CustomUserCreateSerializer(UserCreateSerializer):
-    class Meta(UserCreateSerializer.Meta):
-        model = User
-        fields = ('id', 'username', 'email', 'password')
-
-class CustomUserSerializer(UserSerializer):
-    class Meta(UserSerializer.Meta):
-        model = User
-        fields = ('id', 'username', 'email')

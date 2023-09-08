@@ -14,4 +14,3 @@ urlpatterns = [
     path('All_Note/', views.Note_List.as_view()),
     path('Action/<str:pk>/', views.Action.as_view()),
 ]
-# urlpatterns = format_suffix_patterns(urlpatterns)

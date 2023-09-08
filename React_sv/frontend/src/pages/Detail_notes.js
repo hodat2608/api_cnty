@@ -5,7 +5,7 @@ import { Link  } from 'react-router-dom';
 import { ReactComponent as ArrowLeft } from '../assets/arrow-left.svg'
 
 
-const Detail_notes = () => {
+const Detail_notes = ({getNotes}) => {
     let {id} = useParams(); 
     let[item , SetItem] = useState([])
     let navigate = useNavigate();
@@ -37,7 +37,8 @@ const Detail_notes = () => {
             },
             body: JSON.stringify(item)  
         })
-        navigate('/all_note/')
+        // navigate('/all_note/')
+        getNotes();
     }
 
     let handleSubmit = () => {
