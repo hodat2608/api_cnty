@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html>
 <head>
     <title>Account Activation</title>
@@ -6,9 +6,17 @@
 <body>
     <p>Hello {{ user.username }},</p>
     <p>Thank you for registering with our website. To activate your account, please click the link below:</p>
-    <a href="{{ domain }}{% url 'auth_system:verify_email' uid token %}">Activate Your Account</a>
+    <a href="{{ domain }}{% url 'verify_email' uid token %}">Activate Your Account</a>
     <p>If you didn't request this, please ignore this email.</p>
     <p>Best regards,</p>
     <p>Your Website Team</p>
 </body>
-</html>
+</html> -->
+
+{% autoescape off %}
+Hi {{ user.username }},
+
+Please click on the link below to confirm your registration:
+
+{{ protocol }}://{{ domain }}{% url 'verify_email' uidb64=uid token=token %}
+{% endautoescape %}

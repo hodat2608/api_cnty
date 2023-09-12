@@ -13,13 +13,17 @@ from rest_framework.permissions import AllowAny
 from django.contrib.auth import login, logout, authenticate
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
+from rest_framework.authentication import TokenAuthentication, SessionAuthentication,BasicAuthentication
+from rest_framework.permissions import IsAuthenticated
 
 @api_view(['GET'])
 def getRouter(request):
     return Response('I dont give up, i just take a rest, after that i keep going')
     
 class Note_List(APIView):
-                      
+    authentication_classes = [BasicAuthentication,SessionAuthentication]
+    permission_classes =[IsAuthenticated] 
+               
     def get(self,request,format=None):
         note = Note.objects.all() 
         serializer = NoteSerializer(note,many=True)

@@ -37,8 +37,8 @@ const Detail_notes = ({getNotes}) => {
             },
             body: JSON.stringify(item)  
         })
-        // navigate('/all_note/')
-        getNotes();
+        navigate('/all_note/')
+        // getNotes();
     }
 
     let handleSubmit = () => {
