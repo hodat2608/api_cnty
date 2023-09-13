@@ -1,8 +1,9 @@
 from django.db import models
-from django.contrib.auth.models import User
+from accounts.models import UserAccount
 
 
 class Note(models.Model):
+    user = models.ForeignKey(UserAccount,on_delete=models.CASCADE,null=True)
     note_title = models.TextField(null=True,blank=True)
     note_conntent = models.TextField(null=True,blank=True)
     created = models.DateField(auto_now_add=True)

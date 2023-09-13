@@ -10,7 +10,7 @@ class UserSerializer(serializers.ModelSerializer):
     password_confirm = serializers.CharField(style={'input_type': 'password'}, write_only = True)
     class Meta:
         model = UserAccount
-        fields = ('id', 'email', 'username', 'is_otp', 'password','password_confirm')
+        fields = ('id', 'email', 'username', 'password','password_confirm')
         extra_kwargs = {'password': {'write_only': True}}
 
     def validate(self, data):
@@ -35,8 +35,8 @@ class ChangePasswordSerializer(serializers.Serializer):
     re_new_password = serializers.CharField(required=True)
 
 class ResetPasswordEmailSerializer(serializers.Serializer):
-    email = serializers.EmailField(required=True)
-
-class ResetPasswordEmailConfirmOTPSerializer(serializers.Serializer):
     new_password = serializers.CharField(required=True)
     re_new_password = serializers.CharField(required=True)
+
+class Email_password(serializers.Serializer):
+    email = serializers.EmailField(required=True) 

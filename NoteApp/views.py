@@ -3,16 +3,8 @@ from .models import Note
 from .serializers import NoteSerializer,UserSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
-from rest_framework import permissions
-from rest_framework import generics
 from rest_framework import status
-from django.contrib.auth.models import User
-from django.contrib.auth.forms import UserCreationForm
 from rest_framework.decorators import permission_classes, api_view
-from rest_framework.permissions import AllowAny
-from django.contrib.auth import login, logout, authenticate
-from django.utils.decorators import method_decorator
-from django.contrib.auth.decorators import login_required
 from rest_framework.authentication import TokenAuthentication, SessionAuthentication,BasicAuthentication
 from rest_framework.permissions import IsAuthenticated
 
@@ -21,8 +13,8 @@ def getRouter(request):
     return Response('I dont give up, i just take a rest, after that i keep going')
     
 class Note_List(APIView):
-    authentication_classes = [BasicAuthentication,SessionAuthentication]
-    permission_classes =[IsAuthenticated] 
+    # authentication_classes = [BasicAuthentication,SessionAuthentication]
+    # permission_classes =[IsAuthenticated] 
                
     def get(self,request,format=None):
         note = Note.objects.all() 

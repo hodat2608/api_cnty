@@ -22,7 +22,6 @@ INSTALLED_APPS = [
     'NoteApp.apps.NoteappConfig',
     'rest_framework',
     'corsheaders',
-    # 'accounts',
     'rest_framework.authtoken',
     'allauth',
     'allauth.account',
