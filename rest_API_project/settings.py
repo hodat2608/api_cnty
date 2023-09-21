@@ -136,3 +136,9 @@ EMAIL_HOST_PASSWORD = 'gwlx tctw gxbh ogld'
 EMAIL_USE_TLS = True
 SESSION_COOKIE_AGE = 86400
 PASSWORD_RESET_TIMEOUT = 14400
+
+
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:2806",
+#     "http://localhost:3000",
+# ]
