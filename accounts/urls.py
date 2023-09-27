@@ -14,7 +14,7 @@ urlpatterns = [
     path('VerifyViaEmailViews/<str:uidb64>/<str:token>/', VerifyViaEmailViews.as_view({'get': 'verify_email'}), name='VerifyViaEmailViews'),
     path('change_password/', ChangePasswordView.as_view({'post': 'change_password'}), name='change_password'),
     path('reset_password/', ChangePasswordView.as_view({'post': 'reset_password'}), name='reset_password'),
-    path('link_resetpassword_email/<str:encryptemail>/', VerifyViaEmailViews.as_view({'post': 'link_resetpassword_email'}), name='link_resetpassword_email'),
+    path('reset_password_confirm/<str:encryptemail>/', VerifyViaEmailViews.as_view({'post': 'reset_password_confirm'}), name='reset_password_confirm'),
     path('link_resetpassword_email_api/<str:encryptemail>/', link_resetpassword_email_api, name='link_resetpassword_email_api'),
     path('', include(router.urls)),
 ]
