@@ -2,9 +2,18 @@ from django.core.mail import EmailMultiAlternatives
 from django.dispatch import receiver
 from django.template.loader import render_to_string
 from django.urls import reverse
+from django.dispatch import Signal
 
 from django_rest_passwordreset.signals import reset_password_token_created
 
+# New user has registered. Args: user, request.
+user_registered = Signal()
+
+# User has activated his or her account. Args: user, request.
+user_activated = Signal()
+
+# User has been updated. Args: user, request.
+user_updated = Signal()
 
 @receiver(reset_password_token_created)
 def password_reset_token_created(sender, instance, reset_password_token, *args, **kwargs):

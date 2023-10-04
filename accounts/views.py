@@ -140,16 +140,7 @@ class VerifyViaEmailViews(viewsets.ViewSet):
         user = serializer.user
         user.activate_account()
         user.save()
-        # try:
-        #     uid = force_str(urlsafe_base64_decode(uidb64))
-        #     user = UserAccount.objects.get(pk=uid)
-        # except (TypeError, ValueError, OverflowError, UserAccount.DoesNotExist):
-        #     user = None
-        # if user is not None and account_activation_token.check_token(user, token):
-        #     user.activate_account()
-        #     return Response({'message': 'Email verified successfully. You can now log in.'}, status=status.HTTP_201_CREATED)
-        # else:
-        #     return Response({'message': 'Invalid email verification link.'}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response(status=status.HTTP_204_NO_CONTENT) 
     
     @action(detail=False, methods=['post']) 
     def reset_password_confirm(self, request, encryptemail):
@@ -168,33 +159,21 @@ class VerifyViaEmailViews(viewsets.ViewSet):
 
 class UserViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['post'])
-    def signup(self, request):
+    def perform_create(self, request):
         serializer = UserSerializer(data=request.data)
-        data = {}
-        if serializer.is_valid():
-            user = serializer.save()  
-            to_email = user.email
-            try:
-                func = FunctionView()
-                func.Activate_Email(request,user,to_email)
-                data['response'] = 'User registered successfully. Please check your email for verification.'
-                data['email'] = to_email
-                data['username'] = user.username
-                if Token.objects.filter(user=user).exists():
-                    token = Token.objects.get(user=user)
-                else:
-                    token = Token.objects.create(user=user)
-                data['token'] = token.key
-                data['send_email'] = True 
-                print(f'http://{get_current_site(request).domain}/auth/VerifyViaEmailViews/{urlsafe_base64_encode(force_bytes(user.pk))}/{account_activation_token.make_token(user)}')
-            except Exception as e:
-                data['response_error'] = f'Error sending email: {str(e)}' 
-                data['send_email'] = False 
-        else:
-            response=serializer.errors
-            return Response(response, status=status.HTTP_400_BAD_REQUEST)
-        return Response(data,status=status.HTTP_200_OK)
-    
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()  
+        to_email = user.email
+        signals.user_registered.send(
+            sender=self.__class__, user=user, request=self.request
+        )
+        if settings.SEND_ACTIVATION_EMAIL:
+            context = {"user": user}
+            settings.EMAIL.activation(self.request, context).send(to_email)
+        elif settings.SEND_CONFIRMATION_EMAIL:
+            settings.EMAIL.confirmation(self.request, context).send(to_email)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @action(detail=False, methods=['post'])
     def signup_backup(self, request):
         serializer = UserSerializer(data=request.data)
