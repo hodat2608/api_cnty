@@ -138,10 +138,10 @@ SESSION_COOKIE_AGE = 86400
 PASSWORD_RESET_TIMEOUT = 14400
 
 
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:2806",
-#     "http://localhost:3000",
-# ]
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:2806",
+    "http://localhost:3000",
+]
 
 DJOSER = {
     'LOGIN_FIELD': 'email',
@@ -164,15 +164,88 @@ DJOSER = {
         'user_delete': 'djoser.serializers.UserDeleteSerializer',
     }
 }
-
+USER_ID_FIELD = "id"
 LOGIN_FIELD = "email"
 PASSWORD_CHANGED_EMAIL_CONFIRMATION = True
 LOGOUT_ON_PASSWORD_CHANGE = True
 CREATE_SESSION_ON_LOGIN = True
-SEND_ACTIVATION_EMAIL: True
+SEND_ACTIVATION_EMAIL = True
+USER_CREATE_PASSWORD_RETYPE = True,
 SEND_CONFIRMATION_EMAIL = True
 TOKEN_MODEL = "rest_framework.authtoken.models.Token"
-EMAIL =  {
-        'activation': 'accounts.email_backends.ActivationEmail',
-        },
+PASSWORD_RESET_SHOW_EMAIL_NOT_FOUND = True,
+USERNAME_RESET_SHOW_EMAIL_NOT_FOUND = True,
+PASSWORD_RESET_CONFIRM_URL ='password/reset/confirm/{uid}/{token}',
 ACTIVATION_URL = 'activate/{uid}/{token}'
+HIDE_USERS = True
+
+from django.utils.module_loading import import_string
+from django.apps import apps
+from django.conf import settings as django_settings
+from django.test.signals import setting_changed
+from django.utils.functional import LazyObject
+
+class ObjDict(dict):
+    def __getattribute__(self, item):
+        try:
+            val = self[item]
+            if isinstance(val, str):
+                val = import_string(val)
+            elif isinstance(val, (list, tuple)):
+                val = [import_string(v) if isinstance(v, str) else v for v in val]
+            self[item] = val
+        except KeyError:
+            val = super().__getattribute__(item)
+        return val
+
+EMAIL = ObjDict({
+    "activation": "accounts.email_backends.ActivationEmail",
+    "confirmation": "accounts.email_backends.ConfirmationEmail",
+    "password_changed_confirmation": "accounts.email_backends.PasswordChangedConfirmationEmail",
+    "password_reset": "accounts.email_backends.PasswordResetEmail",
+    
+})
+SERIALIZERS = ObjDict({
+    "activation": "accounts.serializers.ActivationSerializer",
+    "resend_activation" : "accounts.serializers.SendEmailResetSerializer",
+    "token": "accounts.serializers.TokenSerializer",
+    "user": "accounts.serializers.UserSerializer",
+    "password_reset": "accounts.serializers.SendEmailResetSerializer",
+    "user_create": "accounts.serializers.UserCreateSerializer",
+    "user_create_password_retype": "accounts.serializers.UserCreatePasswordRetypeSerializer",
+    "current_user": "accounts.serializers.UserSerializer",
+})
+
+PERMISSIONS = ObjDict(
+        {
+            "activation": ["rest_framework.permissions.AllowAny"],
+            "password_reset": ["rest_framework.permissions.AllowAny"],
+            "password_reset_confirm": ["rest_framework.permissions.AllowAny"],
+            "set_password": ["accounts.permissions.CurrentUserOrAdmin"],
+            "username_reset": ["rest_framework.permissions.AllowAny"],
+            "username_reset_confirm": ["rest_framework.permissions.AllowAny"],
+            "set_username": ["accounts.permissions.CurrentUserOrAdmin"],
+            "user_create": ["rest_framework.permissions.AllowAny"],
+            "user_delete": ["accounts.permissions.CurrentUserOrAdmin"],
+            "user": ["accounts.permissions.CurrentUserOrAdmin"],
+            "user_list": ["accounts.permissions.CurrentUserOrAdmin"],
+            "token_create": ["rest_framework.permissions.AllowAny"],
+            "token_destroy": ["rest_framework.permissions.IsAuthenticated"],
+        }
+    )
+
+from accounts.constants import Messages as AccountMessages
+CONSTANTS = {
+    'messages': {
+        'INVALID_CREDENTIALS_ERROR': AccountMessages.INVALID_CREDENTIALS_ERROR,
+        'INACTIVE_ACCOUNT_ERROR': AccountMessages.INACTIVE_ACCOUNT_ERROR,
+        'INVALID_TOKEN_ERROR': AccountMessages.INVALID_TOKEN_ERROR,
+        'INVALID_UID_ERROR': AccountMessages.INVALID_UID_ERROR,
+        'STALE_TOKEN_ERROR': AccountMessages.STALE_TOKEN_ERROR,
+        'PASSWORD_MISMATCH_ERROR': AccountMessages.PASSWORD_MISMATCH_ERROR,
+        'USERNAME_MISMATCH_ERROR': AccountMessages.USERNAME_MISMATCH_ERROR,
+        'INVALID_PASSWORD_ERROR': AccountMessages.INVALID_PASSWORD_ERROR,
+        'EMAIL_NOT_FOUND': AccountMessages.EMAIL_NOT_FOUND,
+        'CANNOT_CREATE_USER_ERROR': AccountMessages.CANNOT_CREATE_USER_ERROR,
+    }
+}

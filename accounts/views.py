@@ -1,5 +1,4 @@
 from .models import UserAccount
-from .serializers import UserSerializer
 from rest_framework import viewsets, status
 from django.contrib.auth import authenticate,logout,login
 from rest_framework.views import APIView
@@ -14,7 +13,6 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from .models import UserAccount
-from .serializers import UserSerializer
 from .tokens import account_activation_token 
 from django.utils.encoding import force_str
 from django.contrib import messages
@@ -23,9 +21,8 @@ from django.core.mail import send_mail
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import update_session_auth_hash
-from .serializers import ChangePasswordSerializer,ResetPasswordEmailSerializer
 from Crypto.Cipher import AES
-from .serializers import UidAndTokenSerializer,Email_password,TokenCreateSerializer
+from .serializers import TokenCreateSerializer
 import base64
 import hashlib
 import time,random
@@ -33,9 +30,12 @@ import os
 from django.contrib.sessions.models import Session
 from NoteApp.serializers import NoteSerializer
 from NoteApp.models import Note
-from djoser import signals, utils
+from accounts import signals, utils
 from django.contrib.auth import login, logout
-
+from accounts.combat import get_user_email,get_user_email_field_name
+from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import default_token_generator
+User = get_user_model()
 class FunctionView():
 
     def __init__(self):
@@ -72,25 +72,22 @@ class FunctionView():
         send_mail(subject,message,from_email,[to_email])
 
     def Activate_Email(self,request,user,to_email):
-        if UserAccount.objects.filter(email=to_email).exists:
-            return Response({'message':'User account with this email already exists.'},status=status.HTTP_409_CONFLICT)
-        else: 
-            mail_subject = "Activate your user account."
-            message = render_to_string("static/verify_email.html", {
-                'user': user.username,
-                'domain': get_current_site(request).domain,
-                'uid': urlsafe_base64_encode(force_bytes(user.pk)),
-                'token': account_activation_token.make_token(user),
-                "protocol": 'https' if request.is_secure() else 'http'
-            })
-            print(f'http://{get_current_site(request).domain}/VerifyViaEmailViews/{urlsafe_base64_encode(force_bytes(user.pk))}/{account_activation_token.make_token(user)}')
-            email = EmailMessage(mail_subject, message, to=[to_email])
-            if email.send():
-                messages.success(request, f'Dear <b>{user}</b>, please go to you email <b>{to_email}</b> inbox and click on \
-                        received activation link to confirm and complete the registration. <b>Note:</b> Check your spam folder.')
-            else:
-                messages.error(request, f'Problem sending email to {to_email}, check if you typed it correctly.')
-            return Response({'message':'Successfully register user account.'})
+        mail_subject = "Activate your user account."
+        message = render_to_string("static/verify_email.html", {
+            'user': user.username,
+            'domain': get_current_site(request).domain,
+            'uid': urlsafe_base64_encode(force_bytes(user.pk)),
+            'token': account_activation_token.make_token(user),
+            "protocol": 'https' if request.is_secure() else 'http'
+        })
+        print(f'http://{get_current_site(request).domain}/VerifyViaEmailViews/{urlsafe_base64_encode(force_bytes(user.pk))}/{account_activation_token.make_token(user)}')
+        email = EmailMessage(mail_subject, message, to=[to_email])
+        if email.send():
+            messages.success(request, f'Dear <b>{user}</b>, please go to you email <b>{to_email}</b> inbox and click on \
+                    received activation link to confirm and complete the registration. <b>Note:</b> Check your spam folder.')
+        else:
+            messages.error(request, f'Problem sending email to {to_email}, check if you typed it correctly.')
+        return Response({'message':'Successfully register user account.'})
 
     def encrypt_token(self, token):
         block_size = AES.block_size
@@ -131,83 +128,256 @@ class FunctionView():
         else:
             messages.error(request, f'Problem sending email to {to_email}, check if you typed it correctly.')
 
-class VerifyViaEmailViews(viewsets.ViewSet):
 
-    @action(detail=False, methods=['get'])  
-    def verify_email(request, uidb64, token):
-        serializer = UidAndTokenSerializer(data=request.data)
+class UserViewSet(viewsets.ModelViewSet):
+    serializer_class = settings.SERIALIZERS.user
+    queryset = User.objects.all()
+    permission_classes = settings.PERMISSIONS.user
+    token_generator = default_token_generator
+    lookup_field = settings.USER_ID_FIELD
+    
+
+    def permission_denied(self, request, **kwargs):
+        if (
+            settings.HIDE_USERS
+            and request.user.is_authenticated
+            and self.action in ["update", "partial_update", "list", "retrieve"]
+        ):
+            from rest_framework.exceptions import NotFound
+            raise NotFound()
+        super().permission_denied(request, **kwargs)
+
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = super().get_queryset()
+        if settings.HIDE_USERS and self.action == "list" and not user.is_staff:
+            queryset = queryset.filter(pk=user.pk)
+        return queryset
+    
+    def get_permissions(self):
+        if self.action == "create":
+            self.permission_classes = settings.PERMISSIONS.user_create
+        elif self.action == "activation":
+            self.permission_classes = settings.PERMISSIONS.activation
+        elif self.action == "resend_activation":
+            self.permission_classes = settings.PERMISSIONS.password_reset
+        elif self.action == "list":
+            self.permission_classes = settings.PERMISSIONS.user_list
+        elif self.action == "reset_password":
+            self.permission_classes = settings.PERMISSIONS.password_reset
+        elif self.action == "reset_password_confirm":
+            self.permission_classes = settings.PERMISSIONS.password_reset_confirm
+        elif self.action == "set_password":
+            self.permission_classes = settings.PERMISSIONS.set_password
+        elif self.action == "set_username":
+            self.permission_classes = settings.PERMISSIONS.set_username
+        elif self.action == "reset_username":
+            self.permission_classes = settings.PERMISSIONS.username_reset
+        elif self.action == "reset_username_confirm":
+            self.permission_classes = settings.PERMISSIONS.username_reset_confirm
+        elif self.action == "destroy" or (
+            self.action == "me" and self.request and self.request.method == "DELETE"
+        ):
+            self.permission_classes = settings.PERMISSIONS.user_delete
+        return super().get_permissions()
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            if settings.USER_CREATE_PASSWORD_RETYPE:
+                return settings.SERIALIZERS.user_create_password_retype
+            return settings.SERIALIZERS.user_create
+        elif self.action == "destroy" or (
+            self.action == "me" and self.request and self.request.method == "DELETE"
+        ):
+            return settings.SERIALIZERS.user_delete
+        elif self.action == "activation":
+            return settings.SERIALIZERS.activation
+        elif self.action == "resend_activation":
+            return settings.SERIALIZERS.password_reset
+        elif self.action == "reset_password":
+            return settings.SERIALIZERS.password_reset
+        elif self.action == "reset_password_confirm":
+            if settings.PASSWORD_RESET_CONFIRM_RETYPE:
+                return settings.SERIALIZERS.password_reset_confirm_retype
+            return settings.SERIALIZERS.password_reset_confirm
+        elif self.action == "set_password":
+            if settings.SET_PASSWORD_RETYPE:
+                return settings.SERIALIZERS.set_password_retype
+            return settings.SERIALIZERS.set_password
+        elif self.action == "set_username":
+            if settings.SET_USERNAME_RETYPE:
+                return settings.SERIALIZERS.set_username_retype
+            return settings.SERIALIZERS.set_username
+        elif self.action == "reset_username":
+            return settings.SERIALIZERS.username_reset
+        elif self.action == "reset_username_confirm":
+            if settings.USERNAME_RESET_CONFIRM_RETYPE:
+                return settings.SERIALIZERS.username_reset_confirm_retype
+            return settings.SERIALIZERS.username_reset_confirm
+        elif self.action == "me":
+            return settings.SERIALIZERS.current_user
+
+        return self.serializer_class
+
+    def get_instance(self):
+        return self.request.user
+
+    def perform_create(self, serializer, *args, **kwargs):
+        user = serializer.save(*args, **kwargs)
+       
+        signals.user_registered.send(
+            sender=self.__class__, user=user, request=self.request
+        )
+        context = {"user": user}
+        to = [get_user_email(user)]
+        if settings.SEND_ACTIVATION_EMAIL:
+            settings.EMAIL.activation(self.request, context).send(to)
+        elif settings.SEND_CONFIRMATION_EMAIL:
+            settings.EMAIL.confirmation(self.request, context).send(to)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def perform_update(self, serializer, *args, **kwargs):
+        super().perform_update(serializer, *args, **kwargs)
+        user = serializer.instance
+        signals.user_updated.send(
+            sender=self.__class__, user=user, request=self.request
+        )
+        
+        if settings.SEND_ACTIVATION_EMAIL and not user.is_active:
+            context = {"user": user}
+            to = [get_user_email(user)]
+            settings.EMAIL.activation(self.request, context).send(to)
+    
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        if instance == request.user:
+            utils.logout_user(self.request)
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(["get", "put", "patch", "delete"], detail=False)
+    def me(self, request, *args, **kwargs):
+        self.get_object = self.get_instance
+        if request.method == "GET":
+            return self.retrieve(request, *args, **kwargs)
+        elif request.method == "PUT":
+            return self.update(request, *args, **kwargs)
+        elif request.method == "PATCH":
+            return self.partial_update(request, *args, **kwargs)
+        elif request.method == "DELETE":
+            return self.destroy(request, *args, **kwargs)
+
+    @action(detail=False, methods=['post'])  
+    def activation(self, request):
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.user
         user.activate_account()
         user.save()
-        return Response(status=status.HTTP_204_NO_CONTENT) 
-    
-    @action(detail=False, methods=['post']) 
-    def reset_password_confirm(self, request, encryptemail):
-        serializer = ResetPasswordEmailSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        try:
-            decode_email = FunctionView()
-            email = decode_email.decode_email(encryptemail)
-            user = UserAccount.objects.get(email=email)
-        except (TypeError, ValueError, OverflowError, UserAccount.DoesNotExist):
-            user = None
-        serializer.user.set_password(serializer.validated_data["new_password"])
-        serializer.user.save()
-        update_session_auth_hash(request, user)
-        return Response({'message': 'Thay đổi mật khẩu thành công'}, status=status.HTTP_200_OK)
 
-class UserViewSet(viewsets.ViewSet):
-    @action(detail=False, methods=['post'])
-    def perform_create(self, request):
-        serializer = UserSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()  
-        to_email = user.email
-        signals.user_registered.send(
+        signals.user_activated.send(
             sender=self.__class__, user=user, request=self.request
         )
-        if settings.SEND_ACTIVATION_EMAIL:
+
+        if settings.SEND_CONFIRMATION_EMAIL:
             context = {"user": user}
-            settings.EMAIL.activation(self.request, context).send(to_email)
-        elif settings.SEND_CONFIRMATION_EMAIL:
-            settings.EMAIL.confirmation(self.request, context).send(to_email)
+            to = [get_user_email(user)]
+            settings.EMAIL.confirmation(self.request, context).send(to)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @action(["post"], detail=False)
+    def resend_activation(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.get_user(is_active=False)
+
+        if not settings.SEND_ACTIVATION_EMAIL or not user:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        context = {"user": user}
+        to = [get_user_email(user)]
+        settings.EMAIL.activation(self.request, context).send(to)
+
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=['post'])
-    def signup_backup(self, request):
-        serializer = UserSerializer(data=request.data)
-        data={}
-        if serializer.is_valid():
-            user = serializer.save()
-            data['response']='User registered successfully'
-            data['email'] = user.email
-            data['username']= user.username
-            token,_ = Token.objects.get_or_create(user=user)
-            data['token'] = token.key
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        return Response(data,status=status.HTTP_201_CREATED)
-    
-    @action(detail=False, methods=['post'])
     def login(self, request):
-        serializer = TokenCreateSerializer(data=request.data,context={"request": request})
+        serializer = TokenCreateSerializer(data=request.data,context={"request": request,})
         serializer.is_valid(raise_exception=True)
-        user = serializer.user
-        login(request,user)
-        token, _ = Token.objects.get_or_create(user=user)
+        token = utils.login_user(self.request, serializer.user)
+        token_serializer_class = settings.SERIALIZERS.token
+        
         if settings.CREATE_SESSION_ON_LOGIN:
             update_session_auth_hash(self.request, self.request.user)
-        return Response({'message':'login success' ,'token': token.key},status=status.HTTP_200_OK )
+        return Response(
+            data=token_serializer_class(token).data, status=status.HTTP_200_OK
+        )
     
-        
     @action(detail=False, methods=['post'])
     def logout(self, request):
         if request.user.is_authenticated:
-            logout(request)
+            utils.logout_user(self.request)
             return Response({'message': 'Logout successful'},status=status.HTTP_200_OK)
         else:
             return Response({'error': 'User is not authenticated'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+
+    @action(detail=False, methods=['post'])   
+    def reset_password_retype(self,request):
+        serializer = SendEmailResetSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.get_user()
+
+        if user:
+            context = {"user": user}
+            to = [get_user_email(user)]
+            settings.EMAIL.password_reset(self.request, context).send(to)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=['post']) 
+    def reset_password_retype_confirm(self, request):
+        serializer = ResetPasswordConfirm(data=request.data,context={"request": request,"view":self})
+        serializer.is_valid(raise_exception=True)
+        
+        serializer.user.set_password(serializer.validated_data["new_password"])
+        serializer.user.save()
+
+        if hasattr(serializer.user, "last_login"):
+            from django.utils.timezone import now
+            serializer.user.last_login = now()
+        serializer.user.save()
+
+        if settings.PASSWORD_CHANGED_EMAIL_CONFIRMATION:
+            context = {"user": serializer.user}
+            to = [get_user_email(serializer.user)]
+            settings.EMAIL.password_changed_confirmation(self.request, context).send(to)
+
+        if settings.LOGOUT_ON_PASSWORD_CHANGE:
+            utils.logout_user(self.request)
+
+        return Response({'message': 'Thay đổi mật khẩu thành công'}, status=status.HTTP_200_OK)   
+
+    @action(detail=False, methods=['post'])
+    def change_password(self, request):
+        serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        self.request.user.set_password(serializer.validated_data['new_password'])
+        self.request.user.save()
+
+        if settings.PASSWORD_CHANGED_EMAIL_CONFIRMATION:
+            context = {"user": self.request.user}
+            to = [get_user_email(self.request.user)]
+            settings.EMAIL.password_changed_confirmation(self.request, context).send(to)
+        
+        if settings.LOGOUT_ON_PASSWORD_CHANGE:
+            utils.logout_user(self.request)
+        return Response({"message": "Password changed successfully"}, status=status.HTTP_200_OK)
 
 class SetViews(APIView):
     authentication_classes = [BasicAuthentication,SessionAuthentication,TokenAuthentication]
@@ -218,86 +388,5 @@ class SetViews(APIView):
     def get(self, request):
         return self.test_token_api(request)
     
-class ChangePasswordView(viewsets.ViewSet):
-    @action(detail=False, methods=['post'])   
-    def reset_password(self,request):
-        data={}
-        serializer = Email_password(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        email =  serializer.validated_data.get('email')
-        try:
-            func= FunctionView()
-            func.resetpassword_via_Email(request,email)
-            data['Response'] = "Succsesfully send otp to your email"
-            data['send_email'] = True
-            return Response(data, status=status.HTTP_200_OK)
-        except Exception as e:
-            data['response_error'] = f'Error sending email: {str(e)}' 
-            data['send_email'] = False 
-            return Response(data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-    permission_classes = [IsAuthenticated]
-    @action(detail=False, methods=['post'])
-    def change_password(self, request):
-        serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
-        serializer.is_valid(raise_exception=True)
-        self.request.user.set_password(serializer.validated_data['new_password'])
-        self.request.user.save()
-        if settings.LOGOUT_ON_PASSWORD_CHANGE:
-            logout(self.request)
-        return Response({"message": "Password changed successfully"}, status=status.HTTP_200_OK)
-          
-@api_view(['POST'])
-def link_resetpassword_email_api(request,encryptemail):
-    serializer = ResetPasswordEmailSerializer(data=request.data)
-    if serializer.is_valid():
-        try:
-            decode_email = FunctionView()
-            email = decode_email.decode_email(encryptemail)
-            user = UserAccount.objects.get(email=email)
-        except (TypeError, ValueError, OverflowError, UserAccount.DoesNotExist):
-            user = None
-        new_password = serializer.validated_data.get('new_password')
-        re_new_password = serializer.validated_data.get('re_new_password')
-        if not re_new_password or not new_password:
-            return Response({'message': 'Vui lòng điền đầy đủ thông tin'}, status=status.HTTP_400_BAD_REQUEST)
-        if new_password != re_new_password:
-            return Response({'message': 'Mật khẩu xác nhận không khớp'}, status=status.HTTP_400_BAD_REQUEST)
-        user.set_password(new_password)
-        user.save()
-        update_session_auth_hash(request, user)
-        return Response({'message': 'Thay đổi mật khẩu thành công'}, status=status.HTTP_200_OK)
-    else:
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
 
-@api_view(['GET'])
-def verify_email_api_view(request, uidb64, token):
-    try:
-        uid = force_str(urlsafe_base64_decode(uidb64))
-        user = UserAccount.objects.get(pk=uid)
-    except (TypeError, ValueError, OverflowError, UserAccount.DoesNotExist):
-        user = None
-    if user is not None and account_activation_token.check_token(user, token):
-        user.activate_account()
-        return Response({'message': 'Email verified successfully. You can now log in.'}, status=status.HTTP_200_OK)
-    else:
-        return Response({'message': 'Invalid email verification link.'}, status=status.HTTP_400_BAD_REQUEST)
-                       
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def change_password_api(request):
-    if request.method == 'POST':
-        serializer = ChangePasswordSerializer(data=request.data)
-        if serializer.is_valid():
-            user = request.user
-            if not user.check_password(serializer.data.get('old_password')):
-                return Response({'message': 'Mật khẩu cũ không chính xác'}, status=status.HTTP_400_BAD_REQUEST)
-            if serializer.data.get('new_password') != serializer.data.get('re_new_password'):
-                return Response({'message': 'Mật khẩu xác nhận không khớp'}, status=status.HTTP_400_BAD_REQUEST)
-            user.set_password(serializer.data.get('new_password'))
-            user.save()
-            update_session_auth_hash(request, user) 
-            return Response({'message': 'Password changed successfully.'}, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

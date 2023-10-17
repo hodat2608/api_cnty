@@ -16,9 +16,48 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.settings import api_settings
 from django.conf import settings
 from accounts import utils
+from accounts.combat import get_user_email, get_user_email_field_name
 User = get_user_model()
 
+    
 class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = tuple(User.REQUIRED_FIELDS) + (
+            settings.USER_ID_FIELD,
+            settings.LOGIN_FIELD,
+        )
+        read_only_fields = (settings.LOGIN_FIELD,)
+
+    def update(self, instance, validated_data):
+        email_field = get_user_email_field_name(User)
+        instance.email_changed = False
+        if settings.SEND_ACTIVATION_EMAIL and email_field in validated_data:
+            instance_email = get_user_email(instance)
+            if instance_email != validated_data[email_field]:
+                instance.is_active = False
+                instance.email_changed = True
+                instance.save(update_fields=["is_active"])
+        return super().update(instance, validated_data)
+
+class UserCreateMixin:
+    def create(self, validated_data):
+        try:
+            user = self.perform_create(validated_data)
+        except IntegrityError:
+            self.fail("cannot_create_user")
+
+        return user
+
+    def perform_create(self, validated_data):
+        with transaction.atomic():
+            user = User.objects.create_user(**validated_data)
+            if settings.SEND_ACTIVATION_EMAIL:
+                user.is_active = False
+                user.save(update_fields=["is_active"])
+        return user
+
+class UserCreateSerializer(UserCreateMixin, serializers.ModelSerializer):
     password = serializers.CharField(style={'input_type': 'password'}, write_only = True)
     class Meta:
         model = UserAccount
@@ -40,24 +79,34 @@ class UserSerializer(serializers.ModelSerializer):
 
         return attrs
     
-    def create(self, validated_data):
-        user = UserAccount(
-            email=validated_data['email'],
-            username=validated_data['username'],
+class UserCreatePasswordRetypeSerializer(UserCreateSerializer):
+    default_error_messages = {
+        "password_mismatch": settings.CONSTANTS['messages']['PASSWORD_MISMATCH_ERROR']
+    }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["re_password"] = serializers.CharField(
+            style={"input_type": "password"}
         )
-        user.set_password(validated_data['password'])
-        user.save()
-        return user
+
+    def validate(self, attrs):
+        self.fields.pop("re_password", None)
+        re_password = attrs.pop("re_password")
+        attrs = super().validate(attrs)
+        if attrs["password"] == re_password:
+            return attrs
+        else:
+            self.fail("password_mismatch")
     
 
 class TokenCreateSerializer(serializers.Serializer):
     password = serializers.CharField(required=False, style={"input_type": "password"})
 
-    # default_error_messages = {
-    #     "invalid_credentials": settings.CONSTANTS.messages.INVALID_CREDENTIALS_ERROR,
-    #     "inactive_account": settings.CONSTANTS.messages.INACTIVE_ACCOUNT_ERROR,
-    # }
-
+    default_error_messages = {
+        "invalid_credentials": settings.CONSTANTS['messages']['INVALID_CREDENTIALS_ERROR'],
+        "inactive_account": settings.CONSTANTS['messages']['INACTIVE_ACCOUNT_ERROR']
+    }
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = None
@@ -81,10 +130,10 @@ class UidAndTokenSerializer(serializers.Serializer):
     uid = serializers.CharField()
     token = serializers.CharField()
 
-    # default_error_messages = {
-    #     "invalid_token": settings.CONSTANTS.messages.INVALID_TOKEN_ERROR,
-    #     "invalid_uid": settings.CONSTANTS.messages.INVALID_UID_ERROR,
-    # }
+    default_error_messages = {
+        "invalid_token": settings.CONSTANTS['messages']['INVALID_TOKEN_ERROR'],
+        "invalid_uid": settings.CONSTANTS['messages']['INVALID_UID_ERROR'],
+    }
 
     def validate(self, attrs):
         validated_data = super().validate(attrs)
@@ -108,6 +157,18 @@ class UidAndTokenSerializer(serializers.Serializer):
             raise ValidationError(
                 {"token": [self.error_messages[key_error]]}, code=key_error
             )
+        
+class ActivationSerializer(UidAndTokenSerializer):
+
+    default_error_messages = {
+        "stale_token": settings.CONSTANTS['messages']['STALE_TOKEN_ERROR'],
+    }
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if not self.user.is_active:
+            return attrs
+        raise exceptions.PermissionDenied(self.error_messages["stale_token"])
 
 class CurrentPasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField(style={"input_type": "password"})
@@ -119,6 +180,7 @@ class CurrentPasswordSerializer(serializers.Serializer):
         else:
             raise serializers.ValidationError({"message": 'invalid_password'})
         
+
 class PasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(style={"input_type": "password"})
     def validate(self, attrs):
@@ -128,8 +190,9 @@ class PasswordSerializer(serializers.Serializer):
         try:
             validate_password(attrs["new_password"], user)
         except django_exceptions.ValidationError as e:
-            raise serializers.ValidationError({"message": 'invalid_form_password'})
+            raise serializers.ValidationError({"new_password": list(e.messages)})
         return super().validate(attrs)
+
 
 class PasswordRetypeSerializer(PasswordSerializer):
     re_new_password = serializers.CharField(style={"input_type": "password"})
@@ -141,30 +204,90 @@ class PasswordRetypeSerializer(PasswordSerializer):
         else:
             raise serializers.ValidationError({"message": 'password_mismatch'})
     
+class UsernameSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = (settings.LOGIN_FIELD,)
 
-class ResetPasswordEmailSerializer(serializers.Serializer):
-    new_password = serializers.CharField(required=True)
-    re_new_password = serializers.CharField(required=True)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.username_field = settings.LOGIN_FIELD
+        self._default_username_field = User.USERNAME_FIELD
+        self.fields[f"new_{self.username_field}"] = self.fields.pop(self.username_field)
+
+    def save(self, **kwargs):
+        if self.username_field != self._default_username_field:
+            kwargs[User.USERNAME_FIELD] = self.validated_data.get(
+                f"new_{self.username_field}"
+            )
+        return super().save(**kwargs)
+
+
+class UsernameRetypeSerializer(UsernameSerializer):
+   
+    default_error_messages = {
+        "username_mismatch": settings.CONSTANTS['messages']['USERNAME_MISMATCH_ERROR'].format(
+            settings.LOGIN_FIELD),
+    }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["re_new_" + settings.LOGIN_FIELD] = serializers.CharField()
 
     def validate(self, attrs):
-        new_password = attrs.get('new_password')
-        re_new_password = attrs.get('re_new_password')
-        if not new_password or not re_new_password :
-            raise serializers.ValidationError({'message': 'Vui lòng điền đầy đủ thông tin'})
-        if new_password != re_new_password:
-            raise serializers.ValidationError({'message': 'Password and password confirmation do not match'})
-        return super().validate(attrs)
-    
-class Email_password(serializers.Serializer):
-    email = serializers.EmailField(required=True) 
+        attrs = super().validate(attrs)
+        new_username = attrs[settings.LOGIN_FIELD]
+        if new_username != attrs[f"re_new_{settings.LOGIN_FIELD}"]:
+            self.fail("username_mismatch")
+        else:
+            return attrs
 
-    def validate(self, attrs):
-        email = attrs.get('email')
-        if not email:
-            raise serializers.ValidationError({'message': 'We need email???'})
-        if not UserAccount.objects.filter(email=email).exists:
-            raise serializers.ValidationError({'message': 'Email do not exists'})
-        return super().validate(attrs)
+
+class TokenSerializer(serializers.ModelSerializer):
+    auth_token = serializers.CharField(source="key")
+
+    class Meta:
+        # model = settings.TOKEN_MODEL
+        model = Token
+        fields = ("auth_token",)
+
+
+class UserFunctionsMixin:
+    def get_user(self, is_active=True):
+        try:
+            user = User._default_manager.get(
+                is_active=is_active,
+                **{self.email_field: self.data.get(self.email_field, "")},
+            )
+            if user.has_usable_password():
+                return user
+        except User.DoesNotExist:
+            pass
+        if (
+            settings.PASSWORD_RESET_SHOW_EMAIL_NOT_FOUND
+            or settings.USERNAME_RESET_SHOW_EMAIL_NOT_FOUND
+        ):
+            self.fail("email_not_found")
     
-class ChangePasswordSerializer(PasswordRetypeSerializer,CurrentPasswordSerializer):
+    
+class SendEmailResetSerializer(serializers.Serializer, UserFunctionsMixin):
+
+    default_error_messages = {
+        "email_not_found": settings.CONSTANTS['messages']['EMAIL_NOT_FOUND'],
+    }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.email_field = get_user_email_field_name(User)
+        self.fields[self.email_field] = serializers.EmailField()
+
+
+class ChangePasswordSerializer(PasswordSerializer,CurrentPasswordSerializer):
+    pass
+
+class ResetPasswordConfirm(UidAndTokenSerializer,PasswordSerializer):
+    pass
+
+class CreateAccountUser(UserCreatePasswordRetypeSerializer):
     pass
