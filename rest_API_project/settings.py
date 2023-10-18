@@ -208,12 +208,16 @@ EMAIL = ObjDict({
 SERIALIZERS = ObjDict({
     "activation": "accounts.serializers.ActivationSerializer",
     "resend_activation" : "accounts.serializers.SendEmailResetSerializer",
+    "change_password": "accounts.serializers.ChangePasswordSerializer",
+    "change_password_retype": "accounts.serializers.ChangePasswordRetypeSerializer",
     "token": "accounts.serializers.TokenSerializer",
+    "token_create": "accounts.serializers.TokenCreateSerializer",
     "user": "accounts.serializers.UserSerializer",
     "password_reset": "accounts.serializers.SendEmailResetSerializer",
     "user_create": "accounts.serializers.UserCreateSerializer",
     "user_create_password_retype": "accounts.serializers.UserCreatePasswordRetypeSerializer",
     "current_user": "accounts.serializers.UserSerializer",
+    "user_delete": "accounts.serializers.DeleteUserSerializer",
 })
 
 PERMISSIONS = ObjDict(

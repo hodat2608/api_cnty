@@ -60,8 +60,12 @@ class UserCreateMixin:
 class UserCreateSerializer(UserCreateMixin, serializers.ModelSerializer):
     password = serializers.CharField(style={'input_type': 'password'}, write_only = True)
     class Meta:
-        model = UserAccount
-        fields = ('id', 'email', 'username', 'password')
+        model = User
+        fields = tuple(User.REQUIRED_FIELDS) + (
+            settings.LOGIN_FIELD,
+            settings.USER_ID_FIELD,
+            "password",
+        )
         extra_kwargs = {'password': {'write_only': True}}
         
     def validate(self, attrs):
@@ -172,13 +176,17 @@ class ActivationSerializer(UidAndTokenSerializer):
 
 class CurrentPasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField(style={"input_type": "password"})
+    
+    default_error_messages = {
+        "invalid_password": settings.CONSTANTS['messages']['INVALID_PASSWORD_ERROR'],
+    }
 
     def validate_current_password(self, value):
         is_password_valid = self.context["request"].user.check_password(value)
         if is_password_valid:
             return value
         else:
-            raise serializers.ValidationError({"message": 'invalid_password'})
+            self.fail("invalid_password")
         
 
 class PasswordSerializer(serializers.Serializer):
@@ -286,8 +294,11 @@ class SendEmailResetSerializer(serializers.Serializer, UserFunctionsMixin):
 class ChangePasswordSerializer(PasswordSerializer,CurrentPasswordSerializer):
     pass
 
+class ChangePasswordRetypeSerializer(PasswordRetypeSerializer,CurrentPasswordSerializer):
+    pass
+
 class ResetPasswordConfirm(UidAndTokenSerializer,PasswordSerializer):
     pass
 
-class CreateAccountUser(UserCreatePasswordRetypeSerializer):
+class DeleteUserSerializer(CurrentPasswordSerializer):
     pass

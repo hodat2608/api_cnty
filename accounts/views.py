@@ -1,5 +1,5 @@
 from .models import UserAccount
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, generics,views
 from django.contrib.auth import authenticate,logout,login
 from rest_framework.views import APIView
 from rest_framework.authentication import TokenAuthentication, SessionAuthentication,BasicAuthentication
@@ -36,7 +36,8 @@ from accounts.combat import get_user_email,get_user_email_field_name
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 User = get_user_model()
-class FunctionView():
+
+class FunctionView:
 
     def __init__(self):
         self.secret_key = os.urandom(32)
@@ -129,6 +130,34 @@ class FunctionView():
             messages.error(request, f'Problem sending email to {to_email}, check if you typed it correctly.')
 
 
+class TokenCreateView(utils.ActionViewMixin, generics.GenericAPIView):
+   
+    serializer_class = settings.SERIALIZERS.token_create
+    permission_classes = settings.PERMISSIONS.token_create
+
+    def _action(self, serializer):
+        serializer.is_valid(raise_exception=True)
+        token = utils.login_user(self.request, serializer.user)
+        token_serializer_class = settings.SERIALIZERS.token
+        if settings.CREATE_SESSION_ON_LOGIN:
+            update_session_auth_hash(self.request, self.request.user)
+        return Response(
+            data=token_serializer_class(token).data, status=status.HTTP_200_OK
+        )
+    
+    def post(self, request, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return self._action(serializer)
+
+class TokenDestroyView(views.APIView):
+
+    permission_classes = settings.PERMISSIONS.token_destroy
+
+    def post(self, request):
+        utils.logout_user(request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 class UserViewSet(viewsets.ModelViewSet):
     serializer_class = settings.SERIALIZERS.user
     queryset = User.objects.all()
@@ -201,10 +230,10 @@ class UserViewSet(viewsets.ModelViewSet):
             if settings.PASSWORD_RESET_CONFIRM_RETYPE:
                 return settings.SERIALIZERS.password_reset_confirm_retype
             return settings.SERIALIZERS.password_reset_confirm
-        elif self.action == "set_password":
+        elif self.action == "change_password":
             if settings.SET_PASSWORD_RETYPE:
-                return settings.SERIALIZERS.set_password_retype
-            return settings.SERIALIZERS.set_password
+                return settings.SERIALIZERS.change_password_retype
+            return settings.SERIALIZERS.change_password
         elif self.action == "set_username":
             if settings.SET_USERNAME_RETYPE:
                 return settings.SERIALIZERS.set_username_retype
@@ -243,7 +272,7 @@ class UserViewSet(viewsets.ModelViewSet):
         signals.user_updated.send(
             sender=self.__class__, user=user, request=self.request
         )
-        
+
         if settings.SEND_ACTIVATION_EMAIL and not user.is_active:
             context = {"user": user}
             to = [get_user_email(user)]
@@ -304,32 +333,10 @@ class UserViewSet(viewsets.ModelViewSet):
         settings.EMAIL.activation(self.request, context).send(to)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-    @action(detail=False, methods=['post'])
-    def login(self, request):
-        serializer = TokenCreateSerializer(data=request.data,context={"request": request,})
-        serializer.is_valid(raise_exception=True)
-        token = utils.login_user(self.request, serializer.user)
-        token_serializer_class = settings.SERIALIZERS.token
         
-        if settings.CREATE_SESSION_ON_LOGIN:
-            update_session_auth_hash(self.request, self.request.user)
-        return Response(
-            data=token_serializer_class(token).data, status=status.HTTP_200_OK
-        )
-    
-    @action(detail=False, methods=['post'])
-    def logout(self, request):
-        if request.user.is_authenticated:
-            utils.logout_user(self.request)
-            return Response({'message': 'Logout successful'},status=status.HTTP_200_OK)
-        else:
-            return Response({'error': 'User is not authenticated'}, status=status.HTTP_401_UNAUTHORIZED)
-        
-
     @action(detail=False, methods=['post'])   
     def reset_password_retype(self,request):
-        serializer = SendEmailResetSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.get_user()
 
@@ -342,7 +349,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post']) 
     def reset_password_retype_confirm(self, request):
-        serializer = ResetPasswordConfirm(data=request.data,context={"request": request,"view":self})
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         serializer.user.set_password(serializer.validated_data["new_password"])
@@ -365,8 +372,9 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def change_password(self, request):
-        serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
         self.request.user.set_password(serializer.validated_data['new_password'])
         self.request.user.save()
 
@@ -377,6 +385,8 @@ class UserViewSet(viewsets.ModelViewSet):
         
         if settings.LOGOUT_ON_PASSWORD_CHANGE:
             utils.logout_user(self.request)
+        elif settings.CREATE_SESSION_ON_LOGIN:
+            update_session_auth_hash(self.request, self.request.user)
         return Response({"message": "Password changed successfully"}, status=status.HTTP_200_OK)
 
 class SetViews(APIView):
