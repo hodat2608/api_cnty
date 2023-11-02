@@ -6,7 +6,7 @@ from djoser.conf import settings
 
 
 class ActivationEmail(BaseEmailMessage):
-    template_name = "static/activation.html"
+    template_name = "static/templates/activation.html"
 
     def get_context_data(self):
         # ActivationEmail can be deleted
@@ -20,17 +20,17 @@ class ActivationEmail(BaseEmailMessage):
         uid = utils.encode_uid(user.pk)
         token = default_token_generator.make_token(user)
         url = settings.ACTIVATION_URL.format(**context)
-        print(f'{url}/{uid}/{token}')
+        print(f'{url}')
         return context
     
 class ConfirmationEmail(BaseEmailMessage):
-    template_name = "static/confirmation.html"
+    template_name = "static/templates/confirmation.html"
 
 class PasswordChangedConfirmationEmail(BaseEmailMessage):
-    template_name = "static/password_changed_confirmation.html"
+    template_name = "static/templates/password_changed_confirmation.html"
 
 class PasswordResetEmail(BaseEmailMessage):
-    template_name = "static/password_reset.html"
+    template_name = "static/templates/password_reset.html"
 
     def get_context_data(self):
         # PasswordResetEmail can be deleted
@@ -41,8 +41,25 @@ class PasswordResetEmail(BaseEmailMessage):
         context["token"] = default_token_generator.make_token(user)
         context["url"] = settings.PASSWORD_RESET_CONFIRM_URL.format(**context)
 
-        uid = utils.encode_uid(user.pk)
-        token = default_token_generator.make_token(user)
-        url = settings.ACTIVATION_URL.format(**context)
-        print(f'{url}/{uid}/{token}')
+        url = settings.PASSWORD_RESET_CONFIRM_URL.format(**context)
+        print(f'{url}')
         return context
+    
+class UsernameChangedConfirmationEmail(BaseEmailMessage):
+    template_name = "static/templates/username_changed_confirmation.html"
+
+
+class UsernameResetEmail(BaseEmailMessage):
+    template_name = "static/templates/username_reset.html"
+
+    def get_context_data(self):
+        context = super().get_context_data()
+
+        user = context.get("user")
+        context["uid"] = utils.encode_uid(user.pk)
+        context["token"] = default_token_generator.make_token(user)
+        context["url"] = settings.USERNAME_RESET_CONFIRM_URL.format(**context)
+        url = settings.ACTIVATION_URL.format(**context)
+        print(f'Đây là url của bạn : {url} ')
+        return context
+    

@@ -25,7 +25,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('call_api/', include('NoteApp.urls')),
     path('accounts/', include('allauth.urls')),
-    path('', include('accounts.urls.authtoken_urls')),
-    path('', include('accounts.urls.base_urls')),
+    path('auth/', include('accounts.urls.authtoken_urls')),
+    path('auth/', include('accounts.urls.base_urls')),
+    path('auth/', include('accounts.urls.jwt_urls')),
+    path('auth/', include('accounts.urls.social_urls')),
 ]
 urlpatterns += [re_path(r'^.*', TemplateView.as_view(template_name='index.html'))]

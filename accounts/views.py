@@ -26,6 +26,7 @@ from .serializers import TokenCreateSerializer
 import base64
 import hashlib
 import time,random
+from django.utils.timezone import now
 import os
 from django.contrib.sessions.models import Session
 from NoteApp.serializers import NoteSerializer
@@ -35,6 +36,8 @@ from django.contrib.auth import login, logout
 from accounts.combat import get_user_email,get_user_email_field_name
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
+from accounts.serializers import DeleteUserSerializer
+
 User = get_user_model()
 
 class FunctionView:
@@ -165,7 +168,6 @@ class UserViewSet(viewsets.ModelViewSet):
     token_generator = default_token_generator
     lookup_field = settings.USER_ID_FIELD
     
-
     def permission_denied(self, request, **kwargs):
         if (
             settings.HIDE_USERS
@@ -223,7 +225,7 @@ class UserViewSet(viewsets.ModelViewSet):
         elif self.action == "activation":
             return settings.SERIALIZERS.activation
         elif self.action == "resend_activation":
-            return settings.SERIALIZERS.password_reset
+            return settings.SERIALIZERS.resend_activation
         elif self.action == "reset_password":
             return settings.SERIALIZERS.password_reset
         elif self.action == "reset_password_confirm":
@@ -246,7 +248,6 @@ class UserViewSet(viewsets.ModelViewSet):
             return settings.SERIALIZERS.username_reset_confirm
         elif self.action == "me":
             return settings.SERIALIZERS.current_user
-
         return self.serializer_class
 
     def get_instance(self):
@@ -300,6 +301,18 @@ class UserViewSet(viewsets.ModelViewSet):
         elif request.method == "DELETE":
             return self.destroy(request, *args, **kwargs)
 
+
+    @action(detail=False, methods=['post'])  
+    def delete_user(self, request, *args, **kwargs):
+        serializer = DeleteUserSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        if self.request.user:
+            utils.logout_user(self.request)
+        self.perform_destroy(self.request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
     @action(detail=False, methods=['post'])  
     def activation(self, request):
         serializer = self.get_serializer(data=request.data)
@@ -335,7 +348,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
         
     @action(detail=False, methods=['post'])   
-    def reset_password_retype(self,request):
+    def reset_password(self,request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.get_user()
@@ -348,7 +361,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=['post']) 
-    def reset_password_retype_confirm(self, request):
+    def reset_password_confirm(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
@@ -356,7 +369,6 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer.user.save()
 
         if hasattr(serializer.user, "last_login"):
-            from django.utils.timezone import now
             serializer.user.last_login = now()
         serializer.user.save()
 
@@ -389,6 +401,53 @@ class UserViewSet(viewsets.ModelViewSet):
             update_session_auth_hash(self.request, self.request.user)
         return Response({"message": "Password changed successfully"}, status=status.HTTP_200_OK)
 
+    @action(["post"], detail=False, url_path=f"set_{User.USERNAME_FIELD}")
+    def set_username(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = self.request.user
+        new_username = serializer.data["new_" + User.USERNAME_FIELD]
+
+        setattr(user, User.USERNAME_FIELD, new_username)
+        user.save()
+        if settings.USERNAME_CHANGED_EMAIL_CONFIRMATION:
+            context = {"user": user}
+            to = [get_user_email(user)]
+            settings.EMAIL.username_changed_confirmation(self.request, context).send(to)
+        
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(["post"], detail=False, url_path=f"reset_{User.USERNAME_FIELD}")
+    def reset_username(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.get_user()
+
+        if user:
+            context = {"user": user}
+            to = [get_user_email(user)]
+            settings.EMAIL.username_reset(self.request, context).send(to)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(["post"], detail=False, url_path=f"reset_{User.USERNAME_FIELD}_confirm")
+    def reset_username_confirm(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        new_username = serializer.data["new_" + User.USERNAME_FIELD]
+
+        setattr(serializer.user, User.USERNAME_FIELD, new_username)
+        if hasattr(serializer.user, "last_login"):
+            serializer.user.last_login = now()
+        serializer.user.save()
+
+        if settings.USERNAME_CHANGED_EMAIL_CONFIRMATION:
+            context = {"user": serializer.user}
+            to = [get_user_email(serializer.user)]
+            settings.EMAIL.username_changed_confirmation(self.request, context).send(to)
+        
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
 class SetViews(APIView):
     authentication_classes = [BasicAuthentication,SessionAuthentication,TokenAuthentication]
     permission_classes =[IsAuthenticated]

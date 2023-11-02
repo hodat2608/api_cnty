@@ -27,9 +27,14 @@ INSTALLED_APPS = [
     'allauth.account',
     'django_rest_passwordreset', 
     'accounts.apps.AccountsConfig', 
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
+    'social_django',
+
 ]
 
 MIDDLEWARE = [
+    'social_django.middleware.SocialAuthExceptionMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -53,6 +58,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'social_django.context_processors.backends',
+                'social_django.context_processors.login_redirect',
             ],
         },
     },
@@ -118,13 +125,17 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.SessionAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
 ]
 }
 
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
-    'accounts.backends.EmailBackend'
+    'accounts.backends.EmailBackend',
+    'social_core.backends.google.GoogleOAuth2',
+    'social_core.backends.facebook.FacebookOAuth2',
+
 ]
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -165,8 +176,9 @@ DJOSER = {
     }
 }
 USER_ID_FIELD = "id"
-LOGIN_FIELD = "email"
+LOGIN_FIELD = "username"
 PASSWORD_CHANGED_EMAIL_CONFIRMATION = True
+USERNAME_CHANGED_EMAIL_CONFIRMATION = True
 LOGOUT_ON_PASSWORD_CHANGE = True
 CREATE_SESSION_ON_LOGIN = True
 SEND_ACTIVATION_EMAIL = True
@@ -176,8 +188,20 @@ TOKEN_MODEL = "rest_framework.authtoken.models.Token"
 PASSWORD_RESET_SHOW_EMAIL_NOT_FOUND = True,
 USERNAME_RESET_SHOW_EMAIL_NOT_FOUND = True,
 PASSWORD_RESET_CONFIRM_URL ='password/reset/confirm/{uid}/{token}',
+USERNAME_RESET_CONFIRM_URL = 'email/reset/confirm/{uid}/{token}',
 ACTIVATION_URL = 'activate/{uid}/{token}'
 HIDE_USERS = True
+SET_USERNAME_RETYPE = False
+SET_PASSWORD_RETYPE = True
+PASSWORD_RESET_CONFIRM_RETYPE = False
+USERNAME_RESET_CONFIRM_RETYPE = True
+
+SOCIAL_AUTH_TOKEN_STRATEGY = "accounts.auth_social.token.jwt.TokenStrategy"
+SOCIAL_AUTH_ALLOWED_REDIRECT_URIS = ['http://localhost:2806/google','http://localhost:2806/facebook']
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = '283494643719-hv196mcmq4cml3kban653cs2qv4u29dq.apps.googleusercontent.com'
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = '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'
+SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = ['https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile', 'openid']
+SOCIAL_AUTH_GOOGLE_OAUTH2_EXTRA_DATA = ['username', 'email']
 
 from django.utils.module_loading import import_string
 from django.apps import apps
@@ -203,7 +227,8 @@ EMAIL = ObjDict({
     "confirmation": "accounts.email_backends.ConfirmationEmail",
     "password_changed_confirmation": "accounts.email_backends.PasswordChangedConfirmationEmail",
     "password_reset": "accounts.email_backends.PasswordResetEmail",
-    
+    "username_changed_confirmation": "accounts.email_backends.UsernameChangedConfirmationEmail",
+    "username_reset": "accounts.email_backends.UsernameResetEmail",
 })
 SERIALIZERS = ObjDict({
     "activation": "accounts.serializers.ActivationSerializer",
@@ -214,10 +239,18 @@ SERIALIZERS = ObjDict({
     "token_create": "accounts.serializers.TokenCreateSerializer",
     "user": "accounts.serializers.UserSerializer",
     "password_reset": "accounts.serializers.SendEmailResetSerializer",
+    "password_reset_confirm": "accounts.serializers.ResetPasswordConfirmSerializer",
+    "password_reset_confirm_retype": "accounts.serializers.ResetPasswordConfirmRetypeSerializer",
     "user_create": "accounts.serializers.UserCreateSerializer",
     "user_create_password_retype": "accounts.serializers.UserCreatePasswordRetypeSerializer",
     "current_user": "accounts.serializers.UserSerializer",
     "user_delete": "accounts.serializers.DeleteUserSerializer",
+    "set_username": "accounts.serializers.SetUsernameSerializer",
+    "set_username_retype": "accounts.serializers.SetUsernameRetypeSerializer",
+    "username_reset": "accounts.serializers.SendEmailResetSerializer",
+    "username_reset_confirm": "accounts.serializers.UsernameResetConfirmSerializer",
+    "username_reset_confirm_retype": "accounts.serializers.UsernameResetConfirmRetypeSerializer",
+    "o_auth2" : "accounts.auth_social.serializers.ProviderAuthSerializer"
 })
 
 PERMISSIONS = ObjDict(
@@ -252,4 +285,53 @@ CONSTANTS = {
         'EMAIL_NOT_FOUND': AccountMessages.EMAIL_NOT_FOUND,
         'CANNOT_CREATE_USER_ERROR': AccountMessages.CANNOT_CREATE_USER_ERROR,
     }
+}
+
+from datetime import timedelta
+
+# SIMPLE_JWT = {
+#     "AUTH_HEADER_TYPES": ('JWT',),
+#     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
+#     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+#     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+# }
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ROTATE_REFRESH_TOKENS": False,
+    "BLACKLIST_AFTER_ROTATION": False,
+    "UPDATE_LAST_LOGIN": False,
+
+    "ALGORITHM": "HS256",
+    # "SIGNING_KEY": settings.SECRET_KEY,
+    "VERIFYING_KEY": "",
+    "AUDIENCE": None,
+    "ISSUER": None,
+    "JSON_ENCODER": None,
+    "JWK_URL": None,
+    "LEEWAY": 0,
+
+    "AUTH_HEADER_TYPES": ('JWT',),
+    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
+    # "USER_ID_FIELD": "id",
+    # "USER_ID_CLAIM": "user_id",
+    "USER_AUTHENTICATION_RULE": "rest_framework_simplejwt.authentication.default_user_authentication_rule",
+
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+    "TOKEN_TYPE_CLAIM": "token_type",
+    "TOKEN_USER_CLASS": "rest_framework_simplejwt.models.TokenUser",
+
+    "JTI_CLAIM": "jti",
+
+    "SLIDING_TOKEN_REFRESH_EXP_CLAIM": "refresh_exp",
+    "SLIDING_TOKEN_LIFETIME": timedelta(minutes=5),
+    "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=1),
+
+    "TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainPairSerializer",
+    "TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSerializer",
+    "TOKEN_VERIFY_SERIALIZER": "rest_framework_simplejwt.serializers.TokenVerifySerializer",
+    "TOKEN_BLACKLIST_SERIALIZER": "rest_framework_simplejwt.serializers.TokenBlacklistSerializer",
+    "SLIDING_TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainSlidingSerializer",
+    "SLIDING_TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSlidingSerializer",
 }

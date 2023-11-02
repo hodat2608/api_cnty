@@ -57,8 +57,8 @@ class Action(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ownnoteuser(viewsets.ViewSet):
-    permission_classes =[IsAuthenticated]
-    authentication_classes = [BasicAuthentication,SessionAuthentication,TokenAuthentication] 
+    # permission_classes =[IsAuthenticated]
+    # authentication_classes = [BasicAuthentication,SessionAuthentication,TokenAuthentication] 
     def get_user(self,request):
         try:
             return UserAccount.objects.get(id=request.user.id)

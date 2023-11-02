@@ -24,8 +24,8 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = tuple(User.REQUIRED_FIELDS) + (
-            settings.USER_ID_FIELD,
             settings.LOGIN_FIELD,
+            settings.USER_ID_FIELD,
         )
         read_only_fields = (settings.LOGIN_FIELD,)
 
@@ -297,8 +297,33 @@ class ChangePasswordSerializer(PasswordSerializer,CurrentPasswordSerializer):
 class ChangePasswordRetypeSerializer(PasswordRetypeSerializer,CurrentPasswordSerializer):
     pass
 
-class ResetPasswordConfirm(UidAndTokenSerializer,PasswordSerializer):
+class ResetPasswordConfirmSerializer(UidAndTokenSerializer,PasswordSerializer):
+    pass
+
+class ResetPasswordConfirmRetypeSerializer(UidAndTokenSerializer, PasswordRetypeSerializer):
     pass
 
 class DeleteUserSerializer(CurrentPasswordSerializer):
+    pass
+
+class SetUsernameSerializer(UsernameSerializer, CurrentPasswordSerializer):
+    class Meta:
+        model = User
+        fields = (settings.LOGIN_FIELD, "current_password")
+
+
+class SetUsernameRetypeSerializer(SetUsernameSerializer, UsernameRetypeSerializer):
+    pass
+
+
+class UsernameResetConfirmSerializer(UidAndTokenSerializer, UsernameSerializer):
+    class Meta:
+        model = User
+        fields = (settings.LOGIN_FIELD, "uid", "token")
+ 
+
+
+class UsernameResetConfirmRetypeSerializer(
+    UsernameResetConfirmSerializer, UsernameRetypeSerializer
+):
     pass
