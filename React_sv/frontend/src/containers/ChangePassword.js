@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { connect } from 'react-redux';
 import { Navigate } from 'react-router-dom';
 import { change_password } from '../actions/auth';
-const ChangePassword = ({reset_password_confirm}) => {
+
+const ChangePassword = ({change_password}) => {
 
     const [request, SetRequest] = useState(false)
     const [formData,setFormData ] =  useState({
@@ -21,9 +22,9 @@ const ChangePassword = ({reset_password_confirm}) => {
         SetRequest(true)
       };
     
-      if (Request){
-        return( <Navigate to ='/login/'/>)
-      }
+    if (request){
+    return( <Navigate to ='/login/'/>)
+    }
 
   return (
     <div className='container mt-5'>
@@ -66,4 +67,4 @@ const ChangePassword = ({reset_password_confirm}) => {
 );
 }
 
-export default connect(null,{reset_password_confirm})(ChangePassword)
+export default connect(null,{change_password})(ChangePassword);

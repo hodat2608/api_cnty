@@ -1,8 +1,8 @@
 import React, { Fragment, useState } from 'react';
-import { Link, Redirect } from 'react-router-dom';
 import { connect } from 'react-redux';
 import { logout } from '../actions/auth';
 import { Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 const Navbar = ({ logout, isAuthenticated }) => {
     const [redirect, setRedirect] = useState(false);
@@ -15,18 +15,23 @@ const Navbar = ({ logout, isAuthenticated }) => {
     const guestLinks = () => (
         <Fragment>
             <li className='nav-item'>
-                <Link className='nav-link' to='/login'>Login</Link>
+                <Link className='nav-link' to='/SignInSide/'>Login</Link>
             </li>
             <li className='nav-item'>
-                <Link className='nav-link' to='/signup'>Sign Up</Link>
+                <Link className='nav-link' to='/SignUp/'>Sign Up</Link>
             </li>
         </Fragment>
     );
-
+   
     const authLinks = () => (
-        <li className='nav-item'>
-            <a className='nav-link' href='#!' onClick={logout_user}>Logout</a>
-        </li>
+        <Fragment>
+            <li className='nav-item'>
+                <a className='nav-link' href='#!' onClick={logout_user}>Logout</a>
+            </li> 
+            <li className='nav-item'>
+                <Link className='nav-link' to='/change-password'>Change Password</Link>
+            </li>                    
+        </Fragment>
     );
 
     return (

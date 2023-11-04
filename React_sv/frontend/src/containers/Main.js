@@ -8,6 +8,7 @@ const Main =  ({isAuthenticated}) => {
           <div>
             You are {isAuthenticated ? 'Login' : 'Not Login'}, Welcome to you
           </div>
+          
         )
       }
       

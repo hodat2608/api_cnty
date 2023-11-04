@@ -1,8 +1,7 @@
 
-import './App.css';
+import './styles.css';
 import React from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import './App.css';
 import NoteList from './pages/NoteList';
 import Detail_notes from './pages/Detail_notes'; 
 import { Provider } from 'react-redux';
@@ -18,7 +17,9 @@ import ResetPassword from './containers/ResetPassword';
 import ResetPasswordConfirm from './containers/ResetPasswordConfirm';
 import Notificationresetpassword from './containers/Notification_resetpassword';
 import Facebook from './containers/Facebook';
-
+import ChangePassword from './containers/ChangePassword';
+import SignInSide from './containers/SignInSide';
+import SignUp from './containers/SignUpSide';
 function App() {
   return (
     <Provider store={store}>
@@ -29,11 +30,11 @@ function App() {
           <Route path="/all_note/" element={<NoteList />} />
           <Route path="/detail_note/:id" element={<Detail_notes/>} />
 
-          <Route path='/login/' element={<Login/>} />
-          <Route path='/signup/' element={<Signup/>} />
+          {/* <Route path='/login/' element={<Login/>} /> */}
+          {/* <Route path='/signup/' element={<Signup/>} /> */}
           <Route path='/main/' element={<Main/>} />
 
-          <Route path="/" element={<Home/>} />
+          <Route path="/home/" element={<Home/>} />
           <Route path='/google/' element={<Google/>} />
           <Route path='/facebook/' element={<Facebook/>} />
 
@@ -42,8 +43,12 @@ function App() {
           <Route path='/reset-password/' element={<ResetPassword/>} />
           <Route path='/password/reset/confirm/:uid/:token/' element={<ResetPasswordConfirm/>} /> 
 
-          <Route path='/notification/' element={<Notificationresetpassword/>} />         
+          <Route path='/change-password/' element={<ChangePassword/>} />   
 
+          <Route path='/notification/' element={<Notificationresetpassword/>} />
+                
+          <Route path='/SignInSide/' element={<SignInSide/>} />
+          <Route path='/SignUp/' element={<SignUp/>} />
         </Routes>
     </BrowserRouter>
   </Provider>
