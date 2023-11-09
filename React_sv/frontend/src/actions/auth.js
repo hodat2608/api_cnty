@@ -23,34 +23,6 @@ import {
     CHANGE_PASSWORD_SUCCESS,
 } from './types';
 
-// export const load_user = () => async dispatch => {
-//     if (localStorage.getItem('token')) {
-//         const config = {
-//             headers: {
-//                 'Content-Type': 'application/json',
-//                 'Authorization': `token ${localStorage.getItem('token')}`,
-//                 'Accept': 'application/json'
-//             }
-//         }; 
-//         try {
-//             const res = await axios.get(`${process.env.REACT_APP_API_URL}/auth/auth_token/`, config);
-            
-//             dispatch({
-//                 type: USER_LOADED_SUCCESS,
-//                 payload: res.data
-//             });
-//         } catch (err) {
-//             dispatch({
-//                 type: USER_LOADED_FAIL
-//             });
-//         }
-//     } else {
-//         dispatch({
-//             type: USER_LOADED_FAIL
-//         });
-//     }
-// };
-
 export const load_user = () => async dispatch => {
     if (localStorage.getItem('access')) {
         console.log('access token: ', localStorage.getItem('access'))
@@ -82,7 +54,6 @@ export const load_user = () => async dispatch => {
     }
 };
 
-
 export const login = (username, password) => async dispatch => {
     const config = {
         headers: {
@@ -93,8 +64,7 @@ export const login = (username, password) => async dispatch => {
     const body = JSON.stringify({ username, password});
 
     try {
-        // const res = await axios.post(`${process.env.REACT_APP_API_URL}/auth/jwt/create/`, body, config);
-        const res = await axios.post(`${process.env.REACT_APP_API_URL}/auth/token/login/`, body, config);
+        const res = await axios.post(`${process.env.REACT_APP_API_URL}/auth/jwt/custom/`, body, config);
         dispatch({
             type: LOGIN_SUCCESS,
             payload: res.data
@@ -172,7 +142,6 @@ export const FacebookAuthenticate = (state, code) => async dispatch => {
         }
     }
 };
-
 
 export const checkAuthenticated = () => async dispatch => {
     if (localStorage.getItem('access')){
@@ -295,7 +264,6 @@ export const reset_password_confirm =(uid,token,new_password,re_new_password)=> 
             type:PASSWORD_RESET_CONFIRM_FAIL
         })
     }
-
 }
 
 export const change_password = (current_password,new_password,re_new_password) => async dispatch => {

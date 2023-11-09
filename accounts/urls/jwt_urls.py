@@ -1,5 +1,6 @@
 from django.urls import re_path
 from rest_framework_simplejwt import views
+from accounts.auth_jwt.views import TokenObtainPairView
 
 urlpatterns = [
     re_path(r"^jwt/create/?", 
@@ -13,4 +14,10 @@ urlpatterns = [
     re_path(r"^jwt/verify/?", 
         views.TokenVerifyView.as_view(), 
             name="jwt-verify"),
+
+    re_path(r"^jwt/custom/?", 
+        TokenObtainPairView.as_view(), 
+            name="jwt-custom"),
+
+
 ]

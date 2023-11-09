@@ -177,6 +177,7 @@ DJOSER = {
 }
 USER_ID_FIELD = "id"
 LOGIN_FIELD = "username"
+EMAIL_FIELD = "email"
 PASSWORD_CHANGED_EMAIL_CONFIRMATION = True
 USERNAME_CHANGED_EMAIL_CONFIRMATION = True
 LOGOUT_ON_PASSWORD_CHANGE = True
@@ -258,7 +259,7 @@ PERMISSIONS = ObjDict(
             "activation": ["rest_framework.permissions.AllowAny"],
             "password_reset": ["rest_framework.permissions.AllowAny"],
             "password_reset_confirm": ["rest_framework.permissions.AllowAny"],
-            "set_password": ["accounts.permissions.CurrentUserOrAdmin"],
+            "change_password": ["accounts.permissions.CurrentUserOrAdmin"],
             "username_reset": ["rest_framework.permissions.AllowAny"],
             "username_reset_confirm": ["rest_framework.permissions.AllowAny"],
             "set_username": ["accounts.permissions.CurrentUserOrAdmin"],
@@ -335,3 +336,4 @@ SIMPLE_JWT = {
     "SLIDING_TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainSlidingSerializer",
     "SLIDING_TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSlidingSerializer",
 }
+

@@ -291,10 +291,10 @@ class SendEmailResetSerializer(serializers.Serializer, UserFunctionsMixin):
         self.fields[self.email_field] = serializers.EmailField()
 
 
-class ChangePasswordSerializer(PasswordSerializer,CurrentPasswordSerializer):
+class ChangePasswordSerializer(CurrentPasswordSerializer,PasswordSerializer):
     pass
 
-class ChangePasswordRetypeSerializer(PasswordRetypeSerializer,CurrentPasswordSerializer):
+class ChangePasswordRetypeSerializer(CurrentPasswordSerializer,PasswordRetypeSerializer,):
     pass
 
 class ResetPasswordConfirmSerializer(UidAndTokenSerializer,PasswordSerializer):
@@ -306,7 +306,7 @@ class ResetPasswordConfirmRetypeSerializer(UidAndTokenSerializer, PasswordRetype
 class DeleteUserSerializer(CurrentPasswordSerializer):
     pass
 
-class SetUsernameSerializer(UsernameSerializer, CurrentPasswordSerializer):
+class SetUsernameSerializer( CurrentPasswordSerializer,UsernameSerializer,):
     class Meta:
         model = User
         fields = (settings.LOGIN_FIELD, "current_password")
@@ -321,8 +321,6 @@ class UsernameResetConfirmSerializer(UidAndTokenSerializer, UsernameSerializer):
         model = User
         fields = (settings.LOGIN_FIELD, "uid", "token")
  
-
-
 class UsernameResetConfirmRetypeSerializer(
     UsernameResetConfirmSerializer, UsernameRetypeSerializer
 ):

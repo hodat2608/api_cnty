@@ -199,8 +199,8 @@ class UserViewSet(viewsets.ModelViewSet):
             self.permission_classes = settings.PERMISSIONS.password_reset
         elif self.action == "reset_password_confirm":
             self.permission_classes = settings.PERMISSIONS.password_reset_confirm
-        elif self.action == "set_password":
-            self.permission_classes = settings.PERMISSIONS.set_password
+        elif self.action == "change_password":
+            self.permission_classes = settings.PERMISSIONS.change_password
         elif self.action == "set_username":
             self.permission_classes = settings.PERMISSIONS.set_username
         elif self.action == "reset_username":

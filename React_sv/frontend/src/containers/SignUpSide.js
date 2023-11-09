@@ -38,7 +38,7 @@ const useStyles = makeStyles(theme => ({
     }
   },
   paper: {
-    marginTop: theme.spacing(8),
+    marginTop: theme.spacing(1),
     display: "flex",
     flexDirection: "column",
     alignItems: "center"
@@ -48,8 +48,13 @@ const useStyles = makeStyles(theme => ({
     backgroundColor: theme.palette.secondary.main
   },
   form: {
-    width: "100%", // Fix IE 11 issue.
-    marginTop: theme.spacing(3)
+    width: "130%", 
+    marginTop: theme.spacing(2),
+    borderWidth: '2px',  
+    borderStyle: 'solid',
+    borderColor: '#ccc', 
+    borderRadius: '15px', 
+    padding: theme.spacing(5),
   },
   submit: {
     margin: theme.spacing(3, 0, 2)
@@ -75,6 +80,23 @@ const Signup = ({signup,isAuthenticated}) =>  {
       e.preventDefault();
       signup(email,username,password);
       SetCreatedAccount(true);
+    };
+
+    const continueWithGoogle = async () => {
+      try {
+          const res = await axios.get(`${process.env.REACT_APP_API_URL}/auth/o/google-oauth2/?redirect_uri=${process.env.REACT_APP_API_URL}/google`)
+          window.location.replace(res.data.authorization_url);
+      } catch (err) {
+
+      }
+    };
+    const continueWithFacebook = async () => {
+      try {
+          const res = await axios.get(`${process.env.REACT_APP_API_URL}/auth/o/facebook/?redirect_uri=${process.env.REACT_APP_API_URL}/facebook`)
+          window.location.replace(res.data.authorization_url);
+      } catch (err) {
+
+      }
     };
 
     if (isAuthenticated){
@@ -146,14 +168,33 @@ const Signup = ({signup,isAuthenticated}) =>  {
             type="submit"
             fullWidth
             variant="contained"
-            color="primary"
+            color="default"
             className={classes.submit}
           >
             Sign Up
           </Button>
+          <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              color="secondary"
+              onClick={continueWithGoogle}
+              className={classes.submit}
+            >
+              Continue With Google
+          </Button>
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            color="primary"
+            onClick={continueWithFacebook}        
+          >
+           Continue With Facebook
+          </Button>
           <Grid container justify="flex-end">
-            <Grid item>
-              <Link href="/SignInSide/" variant="body2">
+            <Grid className={classes.submit} item>
+              <Link to={"/login/"} variant="body2">
                 Already have an account? Sign in
               </Link>
             </Grid>

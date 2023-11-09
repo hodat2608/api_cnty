@@ -9,8 +9,6 @@ import store from './store';
 import Home from './components/Home';
 import Layout from './hocs/Layout';
 import Google from './containers/Google';
-import Login from './containers/Login';
-import Signup from './containers/Signup';
 import Main from './containers/Main';
 import Activate from './containers/Activate';
 import ResetPassword from './containers/ResetPassword';
@@ -47,8 +45,8 @@ function App() {
 
           <Route path='/notification/' element={<Notificationresetpassword/>} />
                 
-          <Route path='/SignInSide/' element={<SignInSide/>} />
-          <Route path='/SignUp/' element={<SignUp/>} />
+          <Route path='/login/' element={<SignInSide/>} />
+          <Route path='/signup/' element={<SignUp/>} />
         </Routes>
     </BrowserRouter>
   </Provider>

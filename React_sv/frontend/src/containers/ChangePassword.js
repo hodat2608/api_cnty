@@ -4,7 +4,8 @@ import { connect } from 'react-redux';
 import { Navigate } from 'react-router-dom';
 import { change_password } from '../actions/auth';
 
-const ChangePassword = ({change_password}) => {
+
+const ChangePassword = ({change_password,isAuthenticated}) => {
 
     const [request, SetRequest] = useState(false)
     const [formData,setFormData ] =  useState({
@@ -18,8 +19,10 @@ const ChangePassword = ({change_password}) => {
 
     const onSubmit = e => {
         e.preventDefault();  
-        change_password(current_password,new_password,re_new_password)
-        SetRequest(true)
+        if(isAuthenticated) {
+            change_password(current_password,new_password,re_new_password)}
+            console.log('success to send request to your server')
+            SetRequest(true)
       };
     
     if (request){
@@ -66,5 +69,7 @@ const ChangePassword = ({change_password}) => {
     </div>
 );
 }
-
-export default connect(null,{change_password})(ChangePassword);
+const mapStateToProps = state => ({
+    isAuthenticated: state.auth.isAuthenticated
+  });
+export default connect(mapStateToProps,{change_password})(ChangePassword);

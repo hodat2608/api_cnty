@@ -1,17 +1,21 @@
-import React from "react";
 import Avatar from "@material-ui/core/Avatar";
 import Button from "@material-ui/core/Button";
 import CssBaseline from "@material-ui/core/CssBaseline";
 import TextField from "@material-ui/core/TextField";
 import FormControlLabel from "@material-ui/core/FormControlLabel";
 import Checkbox from "@material-ui/core/Checkbox";
-import Link from "@material-ui/core/Link";
 import Paper from "@material-ui/core/Paper";
 import Box from "@material-ui/core/Box";
 import Grid from "@material-ui/core/Grid";
 import LockOutlinedIcon from "@material-ui/icons/LockOutlined";
 import Typography from "@material-ui/core/Typography";
 import { makeStyles } from "@material-ui/core/styles";
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { connect } from 'react-redux'
+import { login  } from '../actions/auth';
+import {Navigate} from 'react-router-dom';
+import axios from 'axios';
 
 const MadeWithLove = () => (
   <Typography variant="body2" color="textSecondary" align="center">
@@ -44,7 +48,7 @@ const useStyles = makeStyles(theme => ({
     backgroundColor: theme.palette.secondary.main
   },
   form: {
-    width: "100%", // Fix IE 11 issue.
+    width: "70%", // Fix IE 11 issue.
     marginTop: theme.spacing(1)
   },
   submit: {
@@ -52,8 +56,44 @@ const useStyles = makeStyles(theme => ({
   }
 }));
 
-const SignInSide = () => {
+const SignInSide = ({login,isAuthenticated}) => {
   const classes = useStyles();
+
+  const [formData, setFormData] = useState({
+    email:'',
+    password : '',
+  });
+
+  const {username, password} = formData;
+
+  const onChange = e => setFormData ({...formData,[e.target.name]: e.target.value});
+
+  const onSubmit = e => {
+    e.preventDefault();  
+    login(username,password);
+  };
+
+  const continueWithGoogle = async () => {
+    try {
+        const res = await axios.get(`${process.env.REACT_APP_API_URL}/auth/o/google-oauth2/?redirect_uri=${process.env.REACT_APP_API_URL}/google`)
+        window.location.replace(res.data.authorization_url);
+    } catch (err) {
+
+    }
+  };
+  const continueWithFacebook = async () => {
+    try {
+        const res = await axios.get(`${process.env.REACT_APP_API_URL}/auth/o/facebook/?redirect_uri=${process.env.REACT_APP_API_URL}/facebook`)
+        window.location.replace(res.data.authorization_url);
+    } catch (err) {
+
+    }
+  };
+  if (isAuthenticated){
+      
+    return <Navigate to="/main/" />
+  }
+
 
   return (
     <Grid container component="main" className={classes.root}>
@@ -67,17 +107,18 @@ const SignInSide = () => {
           <Typography component="h1" variant="h5">
             Sign in
           </Typography>
-          <form className={classes.form} noValidate>
+          <form onSubmit = {e => onSubmit(e)} className={classes.form} noValidate>
             <TextField
               variant="outlined"
               margin="normal"
               required
               fullWidth
-              id="email"
-              label="Email Address"
-              name="email"
-              autoComplete="email"
+              id="username"
+              label="Email/Username"
+              name="username"
+              autoComplete="username"
               autoFocus
+              onChange = {e => onChange(e)}
             />
             <TextField
               variant="outlined"
@@ -88,7 +129,8 @@ const SignInSide = () => {
               label="Password"
               type="password"
               id="password"
-              autoComplete="current-password"
+              autoComplete="password"
+              onChange = {e => onChange(e)}
             />
             <FormControlLabel
               control={<Checkbox value="remember" color="primary" />}
@@ -98,19 +140,39 @@ const SignInSide = () => {
               type="submit"
               fullWidth
               variant="contained"
-              color="primary"
+              color="default"
               className={classes.submit}
             >
               Sign In
             </Button>
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              color="secondary"
+              onClick={continueWithGoogle}
+              className={classes.submit}
+            >
+              Continue With Google
+          </Button>
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            color="primary"
+            onClick={continueWithFacebook} 
+                   
+          >
+           Continue With Facebook
+          </Button>
             <Grid container>
-              <Grid item xs>
-                <Link href="#" variant="body2">
+              <Grid className={classes.submit} item xs>
+                <Link to={'/reset-password/'} variant="body2">
                   Forgot password?
                 </Link>
               </Grid>
-              <Grid item>
-                <Link href="/SignUp/" variant="body2">
+              <Grid className={classes.submit} item>
+                <Link to={"/SignUp/"} variant="body2">
                   {"Don't have an account? Sign Up"}
                 </Link>
               </Grid>
@@ -125,4 +187,7 @@ const SignInSide = () => {
   );
 };
 
-export default SignInSide;
+const mapStateToProps = state => ({
+  isAuthenticated: state.auth.isAuthenticated
+});
+export default connect(mapStateToProps,{login}) (SignInSide);

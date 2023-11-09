@@ -15,10 +15,10 @@ const Navbar = ({ logout, isAuthenticated }) => {
     const guestLinks = () => (
         <Fragment>
             <li className='nav-item'>
-                <Link className='nav-link' to='/SignInSide/'>Login</Link>
+                <Link className='nav-link' to='/login/'>Login</Link>
             </li>
             <li className='nav-item'>
-                <Link className='nav-link' to='/SignUp/'>Sign Up</Link>
+                <Link className='nav-link' to='/signup/'>Sign Up</Link>
             </li>
         </Fragment>
     );
