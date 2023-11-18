@@ -58,7 +58,7 @@ const Navbar = ({ logout, isAuthenticated }) => {
                     </ul>
                 </div>
             </nav>
-            {redirect ? <Navigate to='/' /> : <Fragment></Fragment>}
+            {redirect ? <Link to='/login' /> : <Fragment></Fragment>}
         </Fragment>
     );
 };

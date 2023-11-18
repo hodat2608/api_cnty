@@ -3,6 +3,9 @@ import { Redirect } from 'react-router-dom';
 import { connect } from 'react-redux';
 import { reset_password } from '../actions/auth';
 import { Navigate } from 'react-router-dom';
+import Dashboard from '../dashboard/Dashboard';
+
+
 
 const ResetPassword = ({ reset_password }) => {
     const [requestSent, setRequestSent] = useState(false);

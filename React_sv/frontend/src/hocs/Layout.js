@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import { checkAuthenticated, load_user } from '../actions/auth';
 import { connect } from 'react-redux';
-
+import Home from '../components/Home';
 const Layout = ({ checkAuthenticated, load_user, children }) => {
   useEffect(() => {
     checkAuthenticated();
@@ -11,7 +11,6 @@ const Layout = ({ checkAuthenticated, load_user, children }) => {
 
   return (
     <div>
-      <Navbar />
       {children}
     </div>
   );

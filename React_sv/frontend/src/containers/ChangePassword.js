@@ -1,35 +1,62 @@
 import React from 'react'
 import { useState } from 'react';
 import { connect } from 'react-redux';
-import { Navigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { change_password } from '../actions/auth';
+import { logout } from '../actions/auth';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 
-const ChangePassword = ({change_password,isAuthenticated}) => {
-
+const ChangePassword = ({change_password,isAuthenticated,logout,flag}) => {
+    const navigate = useNavigate();
     const [request, SetRequest] = useState(false)
     const [formData,setFormData ] =  useState({
         current_password : '',
         new_password:'',
         re_new_password : '',
     })
-
-    const {current_password,new_password,re_new_password } = formData;
+    const {current_password,new_password,re_new_password} = formData;
     const onChange = e => setFormData({ ...formData, [e.target.name]: e.target.value });
-
     const onSubmit = e => {
         e.preventDefault();  
         if(isAuthenticated) {
-            change_password(current_password,new_password,re_new_password)}
-            console.log('success to send request to your server')
-            SetRequest(true)
+            if(new_password === re_new_password){
+            change_password(current_password,new_password,re_new_password)   
+            } else {
+                showNotification('Password and confirm password miss match!', 'warning');
+            }
+        }
       };
-    
-    if (request){
-    return( <Navigate to ='/login/'/>)
-    }
-
-  return (
+    const showNotification = (message, type = 'info') => {
+        toast[type](message, {
+          position: 'top-center',
+          autoClose: 1000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+      };
+    const logout_user = () => {
+        logout();
+        SetRequest(true);
+    };
+    useEffect(() => {
+        if (flag === true) {
+          showNotification('Password changed successfully!', 'success');
+          setTimeout(() => {
+            logout_user();
+            navigate('/login');
+          }, 2000);
+        } else if (flag === false) {
+          showNotification('Current Password incorrect!', 'error');
+        }
+      }, [flag, navigate]);
+     
+return (
     <div className='container mt-5'>
         <form onSubmit={e => onSubmit(e)}>
             <div className='form-group'>
@@ -70,6 +97,7 @@ const ChangePassword = ({change_password,isAuthenticated}) => {
 );
 }
 const mapStateToProps = state => ({
-    isAuthenticated: state.auth.isAuthenticated
+    isAuthenticated: state.auth.isAuthenticated,
+    flag : state.auth.flag
   });
-export default connect(mapStateToProps,{change_password})(ChangePassword);
+export default connect(mapStateToProps,{change_password,logout})(ChangePassword);

@@ -13,7 +13,7 @@ import Typography from "@material-ui/core/Typography";
 import { makeStyles } from "@material-ui/core/styles";
 import Container from "@material-ui/core/Container";
 
-import { useState } from 'react';
+import { useState,useEffect } from 'react';
 import { signup } from '../actions/auth';
 import { Link, Navigate } from 'react-router-dom';
 import { connect } from 'react-redux';

@@ -178,7 +178,7 @@ DJOSER = {
 USER_ID_FIELD = "id"
 LOGIN_FIELD = "username"
 EMAIL_FIELD = "email"
-PASSWORD_CHANGED_EMAIL_CONFIRMATION = True
+PASSWORD_CHANGED_EMAIL_CONFIRMATION = False
 USERNAME_CHANGED_EMAIL_CONFIRMATION = True
 LOGOUT_ON_PASSWORD_CHANGE = True
 CREATE_SESSION_ON_LOGIN = True
@@ -232,6 +232,7 @@ EMAIL = ObjDict({
     "username_reset": "accounts.email_backends.UsernameResetEmail",
 })
 SERIALIZERS = ObjDict({
+    "update_username": "accounts.serializers.UpdateUsernameSerializer",
     "activation": "accounts.serializers.ActivationSerializer",
     "resend_activation" : "accounts.serializers.SendEmailResetSerializer",
     "change_password": "accounts.serializers.ChangePasswordSerializer",

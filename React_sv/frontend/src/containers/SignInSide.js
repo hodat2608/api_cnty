@@ -14,9 +14,12 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { connect } from 'react-redux'
 import { login  } from '../actions/auth';
-import {Navigate} from 'react-router-dom';
+// import {Navigate} from 'react-router-dom';
 import axios from 'axios';
-
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { useEffect } from "react";
 const MadeWithLove = () => (
   <Typography variant="body2" color="textSecondary" align="center">
     {"Built with love by the "}
@@ -58,7 +61,7 @@ const useStyles = makeStyles(theme => ({
 
 const SignInSide = ({login,isAuthenticated}) => {
   const classes = useStyles();
-
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email:'',
     password : '',
@@ -89,12 +92,26 @@ const SignInSide = ({login,isAuthenticated}) => {
 
     }
   };
-  if (isAuthenticated){
-      
-    return <Navigate to="/main/" />
-  }
-
-
+  const showNotification = (message, type = 'info') => {
+    toast[type](message, {
+      position: 'top-center',
+      autoClose: 500,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+    });
+  };
+ 
+  useEffect(() => {
+    if (isAuthenticated === true) {
+      showNotification('Login successfully!', 'success');
+      setTimeout(() => {
+        navigate('/dashboard/');
+      }, 1000);
+    } 
+  }, [isAuthenticated, navigate]);
+ 
   return (
     <Grid container component="main" className={classes.root}>
       <CssBaseline />
@@ -132,6 +149,11 @@ const SignInSide = ({login,isAuthenticated}) => {
               autoComplete="password"
               onChange = {e => onChange(e)}
             />
+            {isAuthenticated === false && (
+            <Typography variant="body2" color="error">
+              Username/Email or Password incorrect!
+            </Typography>
+              )}
             <FormControlLabel
               control={<Checkbox value="remember" color="primary" />}
               label="Remember me"

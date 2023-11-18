@@ -17,6 +17,8 @@ from rest_framework.settings import api_settings
 from django.conf import settings
 from accounts import utils
 from accounts.combat import get_user_email, get_user_email_field_name
+from accounts import views
+import time,random
 User = get_user_model()
 
     
@@ -31,14 +33,66 @@ class UserSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         email_field = get_user_email_field_name(User)
+        print(email_field)
         instance.email_changed = False
         if settings.SEND_ACTIVATION_EMAIL and email_field in validated_data:
             instance_email = get_user_email(instance)
+            print(instance_email)
             if instance_email != validated_data[email_field]:
                 instance.is_active = False
                 instance.email_changed = True
                 instance.save(update_fields=["is_active"])
         return super().update(instance, validated_data)
+    
+class UpdateUsernameSerializer(serializers.Serializer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = None
+        self.fields[settings.LOGIN_FIELD] = serializers.CharField(required=False)
+
+    def create(self, validated_data):
+        try:
+            user = self.perform_create(validated_data)
+        except IntegrityError:
+            self.fail("cannot_create_username")
+
+        return user
+
+    def perform_create(self, validated_data):
+        with transaction.atomic():
+            user = self.context["request"].user
+            if settings.SEND_ACTIVATION_EMAIL:
+                user.username = validated_data.get("username")  
+                user.is_active = False
+                user.save(update_fields=["is_active","username"])
+        return user
+    
+class UpdateEmailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = tuple(User.REQUIRED_FIELDS) + (
+            settings.LOGIN_FIELD,
+            settings.USER_ID_FIELD,
+        )
+        read_only_fields = (settings.LOGIN_FIELD,)
+
+
+    def create(self, validated_data):
+        try:
+            user = self.perform_create(validated_data)
+        except IntegrityError:
+            self.fail("cannot_create_username")
+
+        return user
+
+    def perform_create(self, validated_data):
+        with transaction.atomic():
+            user = self.context["request"].user
+            if settings.SEND_ACTIVATION_EMAIL:
+                user.username = validated_data.get("username")  
+                user.is_active = False
+                user.save(update_fields=["is_active","username"])
+        return user
 
 class UserCreateMixin:
     def create(self, validated_data):
@@ -50,29 +104,45 @@ class UserCreateMixin:
         return user
 
     def perform_create(self, validated_data):
+        
         with transaction.atomic():
             user = User.objects.create_user(**validated_data)
+            token = Token.objects.get(user=user)
+            function_view_instance = views.FunctionView(self)
+            encrypted_token = function_view_instance.encrypt_token(self,str(token))
+            timestamp = int(time.time())
+            pkid = function_view_instance.generate_otp(self,encrypted_token, timestamp)
             if settings.SEND_ACTIVATION_EMAIL:
                 user.is_active = False
-                user.save(update_fields=["is_active"])
+                index_of_first_digit = next((index for index, char in enumerate(validated_data.get(settings.EMAIL_FIELD)[:-10]) if char.isdigit()), None)
+                if index_of_first_digit is not None:
+                    user.username = validated_data.get(settings.EMAIL_FIELD)[:-10][:index_of_first_digit] + str(pkid[1:5])
+                user.save(update_fields=["is_active","username",])
         return user
-
+    
 class UserCreateSerializer(UserCreateMixin, serializers.ModelSerializer):
-    password = serializers.CharField(style={'input_type': 'password'}, write_only = True)
+    password = serializers.CharField(style={"input_type": "password"}, write_only=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = None
+        self.fields[settings.EMAIL_FIELD] = serializers.CharField(required=False)
+
+    default_error_messages = {
+        "cannot_create_user": settings.CONSTANTS['messages']['CANNOT_CREATE_USER_ERROR'],   
+    }
     class Meta:
         model = User
         fields = tuple(User.REQUIRED_FIELDS) + (
-            settings.LOGIN_FIELD,
+            # settings.LOGIN_FIELD,
             settings.USER_ID_FIELD,
             "password",
         )
-        extra_kwargs = {'password': {'write_only': True}}
-        
-    def validate(self, attrs):
 
+    def validate(self, attrs):
         user = User(**attrs)
         password = attrs.get("password")
-
+        print('maybe: Model =>>',user)
         try:
             validate_password(password, user)
         except django_exceptions.ValidationError as e:
@@ -80,7 +150,6 @@ class UserCreateSerializer(UserCreateMixin, serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"password": serializer_error[api_settings.NON_FIELD_ERRORS_KEY]}
             )
-
         return attrs
     
 class UserCreatePasswordRetypeSerializer(UserCreateSerializer):

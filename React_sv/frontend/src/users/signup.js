@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useState,useEffect } from 'react'
 import { connect } from 'react-redux';
 import { signup } from '../actions/auth';
+
 const Signup_user = ({signup}) => {
     const [formData, setFormData] = useState({
         email : '',

@@ -267,24 +267,31 @@ export const reset_password_confirm =(uid,token,new_password,re_new_password)=> 
 }
 
 export const change_password = (current_password,new_password,re_new_password) => async dispatch => {
-    const config = {
-        headers: {
-            'Content-Type': 'application/json'
+    if (localStorage.getItem('access')) {
+        const config = {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `JWT ${localStorage.getItem('access')}`,
+                'Accept': 'application/json'
+            }  
+        };
+        const body = JSON.stringify({current_password,new_password,re_new_password});
+        try{ 
+            await axios.post(`${process.env.REACT_APP_API_URL}/auth/users/change_password/`, body, config)
+            dispatch ({
+                type:CHANGE_PASSWORD_SUCCESS
+            })
+        } catch(err){
+            dispatch({
+                type:CHANGE_PASSWORD_FAIL
+            })
         }
-    };
-    const body = JSON.stringify({current_password,new_password,re_new_password});
-    try{ 
-        await axios.post(`${process.env.REACT_APP_API_URL}/auth/users/change_password/`, body, config)
-        dispatch ({
-            type:CHANGE_PASSWORD_SUCCESS
-        })
-    } catch(err){
+    } else {
         dispatch({
-            type:CHANGE_PASSWORD_FAIL
-        })
+            type: USER_LOADED_FAIL
+        });
     }
 }
-
 export const logout =()=> dispatch =>{
     dispatch({
         type:LOGOUT

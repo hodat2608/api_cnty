@@ -26,7 +26,8 @@ const initialState = {
     access: localStorage.getItem('access'),
     refresh: localStorage.getItem('refresh'),
     isAuthenticated: null,
-    user: null
+    user: null,
+    flag : null,
 };
 
 export default function(state = initialState, action) {
@@ -67,11 +68,19 @@ export default function(state = initialState, action) {
         case USER_LOADED_FAIL:
             return {
                 ...state,
-                user: null
+                user: null,
+                flag : null,
+                isAuthenticated: null
             }
         case GOOGLE_AUTH_FAIL:
         case FACEBOOK_AUTH_FAIL:
         case LOGIN_FAIL:
+            return {
+                ...state,
+                user: null,
+                flag : null,
+                isAuthenticated: false
+            }
         case SIGNUP_FAIL:
         case LOGOUT:
             localStorage.removeItem('access');
@@ -80,19 +89,28 @@ export default function(state = initialState, action) {
                 ...state,
                 access: null,
                 refresh: null,
-                isAuthenticated: false,
-                user: null
+                isAuthenticated: null,
+                user: null,
+                flag : null,
             }
         case PASSWORD_RESET_SUCCESS:
         case PASSWORD_RESET_FAIL:
         case PASSWORD_RESET_CONFIRM_SUCCESS:
         case PASSWORD_RESET_CONFIRM_FAIL:
-        case CHANGE_PASSWORD_SUCCESS:
-        case CHANGE_PASSWORD_FAIL:
         case ACTIVATION_SUCCESS:
         case ACTIVATION_FAIL:
             return {
                 ...state
+            }
+        case CHANGE_PASSWORD_SUCCESS:
+            return {
+                ...state,
+                flag:true
+            }
+        case CHANGE_PASSWORD_FAIL:
+            return {
+                ...state,
+                flag:false
             }
         default:
             return state
