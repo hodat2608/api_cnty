@@ -8,6 +8,7 @@ from rest_framework_simplejwt.authentication import AUTH_HEADER_TYPES
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from django.conf import settings
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from accounts.auth_jwt.serializers        import TokenObtainPairSerializer
 from accounts import utils
 from django.contrib.auth import update_session_auth_hash
 

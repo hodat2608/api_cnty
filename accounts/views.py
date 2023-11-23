@@ -187,6 +187,10 @@ class UserViewSet(viewsets.ModelViewSet):
         return queryset
     
     def get_permissions(self):
+        if self.action == "update_email":
+            self.permission_classes = settings.PERMISSIONS.update_email
+        if self.action == "update_username":
+            self.permission_classes = settings.PERMISSIONS.update_username
         if self.action == "perform_create":
             self.permission_classes = settings.PERMISSIONS.user_create
         if self.action == "create":
@@ -256,6 +260,8 @@ class UserViewSet(viewsets.ModelViewSet):
             return settings.SERIALIZERS.current_user
         elif self.action == "update_username":
             return settings.SERIALIZERS.update_username
+        if self.action == "update_email":
+            return settings.SERIALIZERS.update_email
         return self.serializer_class
 
     def get_instance(self):
@@ -337,10 +343,18 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=['post'])  
-    def update_username(self, request):
+    def update_username(self, request,*args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        # super().partial_update(serializer, *args, **kwargs)
+        serializer.save(*args, **kwargs)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @action(detail=False, methods=['post'])  
+    def update_email(self, request,*args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(*args, **kwargs)
         return Response(status=status.HTTP_204_NO_CONTENT)
     
     @action(detail=False, methods=['post'])  

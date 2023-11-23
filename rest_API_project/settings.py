@@ -232,6 +232,7 @@ EMAIL = ObjDict({
     "username_reset": "accounts.email_backends.UsernameResetEmail",
 })
 SERIALIZERS = ObjDict({
+    "update_email": "accounts.serializers.UpdateEmailSerializer",
     "update_username": "accounts.serializers.UpdateUsernameSerializer",
     "activation": "accounts.serializers.ActivationSerializer",
     "resend_activation" : "accounts.serializers.SendEmailResetSerializer",
@@ -257,6 +258,8 @@ SERIALIZERS = ObjDict({
 
 PERMISSIONS = ObjDict(
         {
+            "update_email":["accounts.permissions.CurrentUserOrAdmin"],
+            "update_username":["accounts.permissions.CurrentUserOrAdmin"],
             "activation": ["rest_framework.permissions.AllowAny"],
             "password_reset": ["rest_framework.permissions.AllowAny"],
             "password_reset_confirm": ["rest_framework.permissions.AllowAny"],

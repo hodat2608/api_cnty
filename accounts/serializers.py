@@ -33,11 +33,9 @@ class UserSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         email_field = get_user_email_field_name(User)
-        print(email_field)
         instance.email_changed = False
         if settings.SEND_ACTIVATION_EMAIL and email_field in validated_data:
             instance_email = get_user_email(instance)
-            print(instance_email)
             if instance_email != validated_data[email_field]:
                 instance.is_active = False
                 instance.email_changed = True
@@ -45,6 +43,7 @@ class UserSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
     
 class UpdateUsernameSerializer(serializers.Serializer):
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = None
@@ -66,34 +65,36 @@ class UpdateUsernameSerializer(serializers.Serializer):
                 user.is_active = False
                 user.save(update_fields=["is_active","username"])
         return user
-    
+
+# class UpdateUsernameSerializer(serializers.ModelSerializer):
+
+#     class Meta:
+#         model = User
+#         fields = (settings.LOGIN_FIELD,)       
+ 
+#     def save(self, **kwargs):
+#         with transaction.atomic():
+#             user = self.context["request"].user
+#             user.username = self.validated_data.get(settings.LOGIN_FIELD )
+#             user.is_active = False
+#             user.save(update_fields=["is_active","username"])
+#         return user  
+        
 class UpdateEmailSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = tuple(User.REQUIRED_FIELDS) + (
-            settings.LOGIN_FIELD,
-            settings.USER_ID_FIELD,
-        )
-        read_only_fields = (settings.LOGIN_FIELD,)
-
-
-    def create(self, validated_data):
-        try:
-            user = self.perform_create(validated_data)
-        except IntegrityError:
-            self.fail("cannot_create_username")
-
-        return user
-
-    def perform_create(self, validated_data):
+        fields = (settings.EMAIL_FIELD,)        
+        
+    def save(self, **kwargs):
         with transaction.atomic():
             user = self.context["request"].user
-            if settings.SEND_ACTIVATION_EMAIL:
-                user.username = validated_data.get("username")  
-                user.is_active = False
-                user.save(update_fields=["is_active","username"])
-        return user
-
+            user.email = self.validated_data.get(
+                settings.EMAIL_FIELD
+            )
+            user.is_active = False
+            user.save(update_fields=["is_active","email"])
+        return user  
+        
 class UserCreateMixin:
     def create(self, validated_data):
         try:
